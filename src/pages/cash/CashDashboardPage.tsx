@@ -1,10 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDownLeft, ArrowUpRight, Wallet, Scale, Landmark } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Wallet, Scale, Landmark, Plus } from 'lucide-react'
 import { useCashAccounts } from '@/hooks/useCashAccounts'
 import { useCashSummary } from '@/hooks/useCashSummary'
 import { useCashTransactions } from '@/hooks/useCashTransactions'
 import { useCashCategories } from '@/hooks/useCashCategories'
+import { useAccountSummaries } from '@/hooks/useAccountSummaries'
+import { AccountsSummary } from '@/components/cash/AccountsSummary'
+import { QuickTransactionModal } from '@/components/cash/QuickTransactionModal'
+import { CashPeriodFilters } from '@/components/cash/CashPeriodFilters'
+import { Button } from '@/components/ui/button'
 import { MetricCard } from '@/components/common/MetricCard'
 import { ChartCard } from '@/components/common/ChartCard'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -12,36 +17,32 @@ import { CashCategoryChart } from '@/charts/CashCategoryChart'
 import { CashIncomeExpenseChart } from '@/charts/CashIncomeExpenseChart'
 import { CashBreakdownPieChart } from '@/charts/CashBreakdownPieChart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { MetricCardSkeleton, ChartSkeleton, PageHeaderSkeleton } from '@/components/ui/skeleton'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { formatCategoryLabel } from '@/utils/cashCategories'
 import { ROUTES } from '@/constants'
 import { cn } from '@/utils/cn'
+import type { CashTransactionType } from '@/types/cash'
 
 const now = new Date()
 const YEARS = Array.from({ length: 6 }, (_, i) => now.getFullYear() - i)
-const MONTHS = [
-  { value: 1, label: 'Enero' },
-  { value: 2, label: 'Febrero' },
-  { value: 3, label: 'Marzo' },
-  { value: 4, label: 'Abril' },
-  { value: 5, label: 'Mayo' },
-  { value: 6, label: 'Junio' },
-  { value: 7, label: 'Julio' },
-  { value: 8, label: 'Agosto' },
-  { value: 9, label: 'Septiembre' },
-  { value: 10, label: 'Octubre' },
-  { value: 11, label: 'Noviembre' },
-  { value: 12, label: 'Diciembre' },
+const MONTH_LABELS = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
 export function CashDashboardPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [cashAccountId, setCashAccountId] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalType, setModalType] = useState<CashTransactionType>('EXPENSE')
+
+  const openQuickAdd = (type: CashTransactionType) => {
+    setModalType(type)
+    setModalOpen(true)
+  }
 
   const summaryFilters = useMemo(
     () => ({
@@ -62,9 +63,26 @@ export function CashDashboardPage() {
   )
 
   const { data: accounts = [], isLoading: accountsLoading } = useCashAccounts()
-  const { data: summary, isLoading: summaryLoading } = useCashSummary(summaryFilters)
+  const accountIds = useMemo(() => accounts.map((a) => a.id), [accounts])
+  const accountSummaryQueries = useAccountSummaries(accountIds)
+  const accountBalances = useMemo(
+    () =>
+      accounts.map((account, i) => ({
+        account,
+        balance: accountSummaryQueries[i]?.data?.balance ?? 0,
+        loading: accountSummaryQueries[i]?.isLoading ?? true,
+      })),
+    [accounts, accountSummaryQueries],
+  )
+  const { data: summary, isLoading: summaryLoading, isFetching: summaryFetching } =
+    useCashSummary(summaryFilters)
   const { data: transactions = [], isLoading: txLoading } = useCashTransactions(txFilters)
   const { data: categories = [] } = useCashCategories()
+
+  const selectedAccount = useMemo(
+    () => accounts.find((a) => a.id === cashAccountId),
+    [accounts, cashAccountId],
+  )
 
   const expenseParents = useMemo(
     () => (summary?.byParentCategory ?? []).filter((c) => c.type === 'EXPENSE'),
@@ -80,7 +98,7 @@ export function CashDashboardPage() {
     [transactions],
   )
 
-  if (accountsLoading || summaryLoading) {
+  if (accountsLoading) {
     return (
       <div className="space-y-8">
         <PageHeaderSkeleton />
@@ -94,6 +112,8 @@ export function CashDashboardPage() {
     )
   }
 
+  const periodLabel = `${MONTH_LABELS[month - 1]} ${year}${selectedAccount ? ` · ${selectedAccount.name}` : ''}`
+
   return (
     <div className="space-y-8 animate-in">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -101,111 +121,147 @@ export function CashDashboardPage() {
           <h1 className="text-2xl font-bold tracking-tight">Gastos e ingresos</h1>
           <p className="text-muted-foreground">Resumen de tu flujo de efectivo</p>
         </div>
-        <Link
-          to={ROUTES.CASH_TRANSACTIONS}
-          className="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs font-medium hover:bg-accent hover:text-accent-foreground"
-        >
-          Ver transacciones
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => openQuickAdd('EXPENSE')}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Gasto
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-success hover:bg-success/10 hover:text-success"
+            onClick={() => openQuickAdd('INCOME')}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Ingreso
+          </Button>
+          <Link
+            to={ROUTES.CASH_TRANSACTIONS}
+            className="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs font-medium hover:bg-accent hover:text-accent-foreground"
+          >
+            Ver transacciones
+          </Link>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="grid gap-4 p-5 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label>Año</Label>
-            <Select value={String(year)} onChange={(e) => setYear(Number(e.target.value))}>
-              {YEARS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </Select>
+      <AccountsSummary items={accountBalances} />
+
+      <QuickTransactionModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        defaultType={modalType}
+        defaultAccountId={cashAccountId || undefined}
+      />
+
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Período</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {summaryFetching && !summaryLoading ? 'Actualizando… · ' : ''}
+              {periodLabel}
+            </p>
           </div>
-          <div className="space-y-2">
-            <Label>Mes</Label>
-            <Select value={String(month)} onChange={(e) => setMonth(Number(e.target.value))}>
-              {MONTHS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
+          <CashPeriodFilters
+            year={year}
+            month={month}
+            cashAccountId={cashAccountId}
+            accounts={accounts}
+            years={YEARS}
+            onYearChange={setYear}
+            onMonthChange={setMonth}
+            onAccountChange={setCashAccountId}
+          />
+        </div>
+
+        {summaryLoading && !summary ? (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <MetricCardSkeleton key={i} />
               ))}
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Cuenta</Label>
-            <Select
-              value={cashAccountId}
-              onChange={(e) => setCashAccountId(e.target.value)}
+            </div>
+            <ChartSkeleton />
+          </>
+        ) : summary ? (
+          <>
+            <div
+              className={cn(
+                'grid gap-4 sm:grid-cols-2 lg:grid-cols-4 transition-opacity',
+                summaryFetching && 'opacity-60',
+              )}
             >
-              <option value="">Todas</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {summary ? (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard
-              title="Saldo inicial"
-              value={formatCurrency(summary.openingBalance)}
-              icon={Landmark}
-            />
-            <MetricCard
-              title="Ingresos"
-              value={formatCurrency(summary.totalIncome)}
-              icon={ArrowDownLeft}
-              trend="up"
-            />
-            <MetricCard
-              title="Gastos"
-              value={formatCurrency(summary.totalExpense)}
-              icon={ArrowUpRight}
-              trend="down"
-            />
-            <MetricCard
-              title="Balance"
-              value={formatCurrency(summary.balance)}
-              icon={Scale}
-              trend={summary.balance >= 0 ? 'up' : 'down'}
-            />
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <ChartCard title="Ingresos vs gastos">
-              <CashIncomeExpenseChart
-                totalIncome={summary.totalIncome}
-                totalExpense={summary.totalExpense}
+              <MetricCard
+                title="Saldo inicial"
+                value={formatCurrency(summary.openingBalance)}
+                icon={Landmark}
               />
-            </ChartCard>
-            <ChartCard title="Detalle por categoría y subcategoría">
-              <CashCategoryChart data={summary.byCategory} />
-            </ChartCard>
-          </div>
+              <MetricCard
+                title="Ingresos"
+                value={formatCurrency(summary.totalIncome)}
+                icon={ArrowDownLeft}
+                trend="up"
+              />
+              <MetricCard
+                title="Gastos"
+                value={formatCurrency(summary.totalExpense)}
+                icon={ArrowUpRight}
+                trend="down"
+              />
+              <MetricCard
+                title="Balance"
+                value={formatCurrency(summary.balance)}
+                icon={Scale}
+                trend={summary.balance >= 0 ? 'up' : 'down'}
+              />
+            </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <ChartCard title="Distribución de gastos">
-              <CashBreakdownPieChart
-                data={expenseParents}
-                emptyMessage="Sin gastos en este período"
-              />
-            </ChartCard>
-            <ChartCard title="Distribución de ingresos">
-              <CashBreakdownPieChart
-                data={incomeParents}
-                emptyMessage="Sin ingresos en este período"
-              />
-            </ChartCard>
-          </div>
-        </>
-      ) : (
-        <EmptyState message="No hay resumen para este período." />
-      )}
+            <div
+              className={cn(
+                'grid gap-6 lg:grid-cols-2 transition-opacity',
+                summaryFetching && 'opacity-60',
+              )}
+            >
+              <ChartCard title="Ingresos vs gastos">
+                <CashIncomeExpenseChart
+                  totalIncome={summary.totalIncome}
+                  totalExpense={summary.totalExpense}
+                />
+              </ChartCard>
+              <ChartCard title="Detalle por categoría y subcategoría">
+                <CashCategoryChart data={summary.byCategory} />
+              </ChartCard>
+            </div>
+
+            <div
+              className={cn(
+                'grid gap-6 lg:grid-cols-2 transition-opacity',
+                summaryFetching && 'opacity-60',
+              )}
+            >
+              <ChartCard title="Distribución de gastos">
+                <CashBreakdownPieChart
+                  data={expenseParents}
+                  emptyMessage="Sin gastos en este período"
+                />
+              </ChartCard>
+              <ChartCard title="Distribución de ingresos">
+                <CashBreakdownPieChart
+                  data={incomeParents}
+                  emptyMessage="Sin ingresos en este período"
+                />
+              </ChartCard>
+            </div>
+          </>
+        ) : (
+          <EmptyState message="No hay resumen para este período." />
+        )}
+      </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

@@ -24,6 +24,8 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000,
       retry: 1,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
     },
   },
 })
@@ -55,7 +57,7 @@ function AppRoutes() {
             <Route path={ROUTES.CASH_TRANSACTIONS} element={<CashTransactionsPage />} />
           </Route>
         </Route>
-        <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+        <Route path="*" element={<Navigate to={ROUTES.CASH} replace />} />
       </Routes>
       <Toaster toasts={toasts} onDismiss={dismissToast} />
     </>

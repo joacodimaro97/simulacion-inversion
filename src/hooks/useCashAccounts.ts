@@ -2,6 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/constants'
 import { CashAccountService } from '@/services/CashAccountService'
 import { useToast } from '@/contexts/ToastContext'
+import {
+  invalidateCashAccounts,
+  invalidateCashAll,
+} from '@/utils/queryInvalidation'
 import type { CreateCashAccountInput, UpdateCashAccountInput } from '@/types/cash'
 
 export function useCashAccounts() {
@@ -17,8 +21,8 @@ export function useCreateCashAccount() {
 
   return useMutation({
     mutationFn: (input: CreateCashAccountInput) => CashAccountService.createAccount(input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cash', 'accounts'] })
+    onSuccess: async () => {
+      await invalidateCashAccounts(queryClient)
       showToast({ title: 'Cuenta creada', variant: 'success' })
     },
     onError: showError,
@@ -32,8 +36,8 @@ export function useUpdateCashAccount() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateCashAccountInput }) =>
       CashAccountService.updateAccount(id, input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cash', 'accounts'] })
+    onSuccess: async () => {
+      await invalidateCashAccounts(queryClient)
       showToast({ title: 'Cuenta actualizada', variant: 'success' })
     },
     onError: showError,
@@ -46,10 +50,8 @@ export function useDeleteCashAccount() {
 
   return useMutation({
     mutationFn: (id: string) => CashAccountService.deleteAccount(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cash', 'accounts'] })
-      void queryClient.invalidateQueries({ queryKey: ['cash', 'summary'] })
-      void queryClient.invalidateQueries({ queryKey: ['cash', 'transactions'] })
+    onSuccess: async () => {
+      await invalidateCashAll(queryClient)
       showToast({ title: 'Cuenta eliminada', variant: 'success' })
     },
     onError: showError,

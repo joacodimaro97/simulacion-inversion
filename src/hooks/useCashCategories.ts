@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/constants'
 import { CashCategoryService } from '@/services/CashCategoryService'
 import { useToast } from '@/contexts/ToastContext'
+import { invalidateCashCategories } from '@/utils/queryInvalidation'
 import type {
   CashTransactionType,
   CategoryQuery,
@@ -29,8 +30,8 @@ export function useCreateCashCategory() {
 
   return useMutation({
     mutationFn: (input: CreateCategoryInput) => CashCategoryService.createCategory(input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cash', 'categories'] })
+    onSuccess: async () => {
+      await invalidateCashCategories(queryClient)
       showToast({ title: 'Categoría creada', variant: 'success' })
     },
     onError: showError,
@@ -44,8 +45,8 @@ export function useUpdateCashCategory() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateCategoryInput }) =>
       CashCategoryService.updateCategory(id, input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cash', 'categories'] })
+    onSuccess: async () => {
+      await invalidateCashCategories(queryClient)
       showToast({ title: 'Categoría actualizada', variant: 'success' })
     },
     onError: showError,
@@ -58,8 +59,8 @@ export function useDeleteCashCategory() {
 
   return useMutation({
     mutationFn: (id: string) => CashCategoryService.deleteCategory(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cash', 'categories'] })
+    onSuccess: async () => {
+      await invalidateCashCategories(queryClient)
       showToast({ title: 'Categoría eliminada', variant: 'success' })
     },
     onError: showError,

@@ -3,6 +3,7 @@ import { queryKeys } from '@/constants'
 import { PerformanceService } from '@/services/PerformanceService'
 import { useAccount } from '@/contexts/AccountContext'
 import { useToast } from '@/contexts/ToastContext'
+import { invalidatePerformance } from '@/utils/queryInvalidation'
 import type {
   CreatePerformanceInput,
   PerformancePeriodQuery,
@@ -49,9 +50,8 @@ export function useCreatePerformance() {
 
   return useMutation({
     mutationFn: (input: CreatePerformanceInput) => PerformanceService.createPerformance(input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['performance'] })
-      void queryClient.invalidateQueries({ queryKey: ['statistics'] })
+    onSuccess: async () => {
+      await invalidatePerformance(queryClient)
       showToast({ title: 'Registro agregado', variant: 'success' })
     },
     onError: showError,
@@ -65,9 +65,8 @@ export function useUpdatePerformance() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdatePerformanceInput }) =>
       PerformanceService.updatePerformance(id, input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['performance'] })
-      void queryClient.invalidateQueries({ queryKey: ['statistics'] })
+    onSuccess: async () => {
+      await invalidatePerformance(queryClient)
       showToast({ title: 'Registro actualizado', variant: 'success' })
     },
     onError: showError,
@@ -80,9 +79,8 @@ export function useDeletePerformance() {
 
   return useMutation({
     mutationFn: (id: string) => PerformanceService.deletePerformance(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['performance'] })
-      void queryClient.invalidateQueries({ queryKey: ['statistics'] })
+    onSuccess: async () => {
+      await invalidatePerformance(queryClient)
       showToast({ title: 'Registro eliminado', variant: 'success' })
     },
     onError: showError,

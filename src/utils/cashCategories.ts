@@ -13,7 +13,39 @@ export function getSubcategories(
   categories: Category[],
   categoryId: string,
 ): Category[] {
-  return categories.filter((c) => c.parentId === categoryId)
+  return categories
+    .filter((c) => c.parentId === categoryId)
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export function splitCategorySelection(
+  categoryId: string,
+  categories: Category[],
+): { parentCategoryId: string; subcategoryId: string } {
+  const category = categories.find((c) => c.id === categoryId)
+  if (!category) return { parentCategoryId: '', subcategoryId: '' }
+  if (category.parentId) {
+    return { parentCategoryId: category.parentId, subcategoryId: category.id }
+  }
+  return { parentCategoryId: category.id, subcategoryId: '' }
+}
+
+export function resolveTransactionCategoryId(
+  parentCategoryId: string,
+  subcategoryId: string,
+): string {
+  return subcategoryId || parentCategoryId
+}
+
+export function isCategorySelectionValid(
+  categories: Category[],
+  parentCategoryId: string,
+  subcategoryId: string,
+): boolean {
+  if (!parentCategoryId) return false
+  const subcategories = getSubcategories(categories, parentCategoryId)
+  if (subcategories.length === 0) return true
+  return subcategoryId !== '' && subcategories.some((c) => c.id === subcategoryId)
 }
 
 export function formatCategoryLabel(

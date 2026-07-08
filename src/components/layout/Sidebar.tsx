@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -11,6 +12,7 @@ import {
   Receipt,
   PiggyBank,
   LogOut,
+  ChevronDown,
 } from 'lucide-react'
 import { ROUTES } from '@/constants'
 import { cn } from '@/utils/cn'
@@ -32,11 +34,74 @@ const cashItems = [
 ]
 
 const mobileItems = [
+  { to: ROUTES.CASH, label: 'Resumen', icon: Wallet },
+  { to: ROUTES.CASH_TRANSACTIONS, label: 'Movimientos', icon: Receipt },
+  { to: ROUTES.CASH_ACCOUNTS, label: 'Cuentas', icon: PiggyBank },
   { to: ROUTES.DASHBOARD, label: 'Inversiones', icon: TrendingUp },
-  { to: ROUTES.CASH, label: 'Gastos', icon: Wallet },
-  { to: ROUTES.CASH_TRANSACTIONS, label: 'Cash', icon: Receipt },
-  { to: ROUTES.SIMULATOR, label: 'Simular', icon: LineChart },
 ]
+
+function isInvestmentPath(pathname: string) {
+  return investmentItems.some((item) =>
+    item.to === ROUTES.DASHBOARD ? pathname === '/' : pathname.startsWith(item.to),
+  )
+}
+
+function NavSection({
+  title,
+  items,
+  defaultEnd,
+}: {
+  title: string
+  items: typeof cashItems
+  defaultEnd?: string
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </p>
+      {items.map((item) => (
+        <NavItem key={item.to} {...item} end={item.to === defaultEnd} />
+      ))}
+    </div>
+  )
+}
+
+function CollapsibleNavSection({
+  title,
+  items,
+  open,
+  onToggle,
+  defaultEnd,
+}: {
+  title: string
+  items: typeof investmentItems
+  open: boolean
+  onToggle: () => void
+  defaultEnd?: string
+}) {
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="mb-2 flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <span>{title}</span>
+        <ChevronDown
+          className={cn('h-4 w-4 transition-transform', open ? 'rotate-0' : '-rotate-90')}
+        />
+      </button>
+      {open && (
+        <div className="space-y-1">
+          {items.map((item) => (
+            <NavItem key={item.to} {...item} end={item.to === defaultEnd} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function NavItem({
   to,
@@ -55,7 +120,7 @@ function NavItem({
       end={end}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+          'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
           isActive
             ? 'bg-primary/10 text-primary'
             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -70,34 +135,36 @@ function NavItem({
 
 export function Sidebar() {
   const { user, logout } = useAuth()
+  const { pathname } = useLocation()
+  const [investmentsOpen, setInvestmentsOpen] = useState(() => isInvestmentPath(pathname))
+
+  useEffect(() => {
+    if (isInvestmentPath(pathname)) setInvestmentsOpen(true)
+  }, [pathname])
 
   return (
     <aside className="hidden h-screen w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex">
       <div className="flex h-16 shrink-0 items-center gap-2 border-b px-6">
-        <TrendingUp className="h-6 w-6 text-primary" />
+        <Wallet className="h-6 w-6 text-primary" />
         <div>
           <h1 className="text-sm font-bold">FCI Tracker</h1>
-          <p className="text-xs text-muted-foreground">Inversiones y finanzas</p>
+          <p className="text-xs text-muted-foreground">Gastos e inversiones</p>
         </div>
       </div>
 
       <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
-        <div className="space-y-1">
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Inversiones
-          </p>
-          {investmentItems.map((item) => (
-            <NavItem key={item.to} {...item} end={item.to === ROUTES.DASHBOARD} />
-          ))}
-        </div>
-        <div className="space-y-1">
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Gastos e ingresos
-          </p>
-          {cashItems.map((item) => (
-            <NavItem key={item.to} {...item} end={item.to === ROUTES.CASH} />
-          ))}
-        </div>
+        <NavSection
+          title="Gastos e ingresos"
+          items={cashItems}
+          defaultEnd={ROUTES.CASH}
+        />
+        <CollapsibleNavSection
+          title="Inversiones"
+          items={investmentItems}
+          open={investmentsOpen}
+          onToggle={() => setInvestmentsOpen((v) => !v)}
+          defaultEnd={ROUTES.DASHBOARD}
+        />
       </nav>
 
       <div className="shrink-0 border-t bg-card p-4">
@@ -110,7 +177,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={logout}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
         >
           <LogOut className="h-4 w-4" />
           Cerrar sesión
@@ -128,10 +195,10 @@ export function MobileNav() {
           <NavLink
             key={to}
             to={to}
-            end={to === ROUTES.DASHBOARD || to === ROUTES.CASH}
+            end={to === ROUTES.CASH || to === ROUTES.DASHBOARD}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center gap-1 px-2 py-1 text-xs transition-colors',
+                'flex flex-col cursor-pointer items-center gap-1 px-2 py-1 text-xs transition-colors',
                 isActive ? 'text-primary' : 'text-muted-foreground',
               )
             }

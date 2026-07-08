@@ -63,14 +63,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { user: loggedUser, token } = await AuthService.login({ email, password })
     setStoredToken(token)
     setUser(loggedUser)
-    navigate(ROUTES.DASHBOARD)
+    navigate(ROUTES.CASH)
   }
 
   const register = async (name: string, email: string, password: string) => {
     const { user: registeredUser, token } = await AuthService.register({ name, email, password })
     setStoredToken(token)
     setUser(registeredUser)
-    navigate(ROUTES.DASHBOARD)
+    navigate(ROUTES.CASH)
   }
 
   const value = useMemo(

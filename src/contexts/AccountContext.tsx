@@ -1,5 +1,6 @@
 import { createContext, useContext, useRef, useEffect, type ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { invalidateFciAccounts } from '@/utils/queryInvalidation'
 import { queryKeys } from '@/constants'
 import { AccountService } from '@/services/AccountService'
 import type { Account, CreateAccountInput } from '@/types/api'
@@ -31,8 +32,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const createMutation = useMutation({
     mutationFn: (input: CreateAccountInput) => AccountService.createAccount(input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all })
+    onSuccess: async () => {
+      await invalidateFciAccounts(queryClient)
     },
   })
 

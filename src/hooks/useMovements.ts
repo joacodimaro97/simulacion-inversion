@@ -3,6 +3,7 @@ import { queryKeys } from '@/constants'
 import { MovementService } from '@/services/MovementService'
 import { useAccount } from '@/contexts/AccountContext'
 import { useToast } from '@/contexts/ToastContext'
+import { invalidateMovements } from '@/utils/queryInvalidation'
 import type { CreateMovementInput, UpdateMovementInput } from '@/types/api'
 
 export function useMovements() {
@@ -21,9 +22,8 @@ export function useCreateMovement() {
 
   return useMutation({
     mutationFn: (input: CreateMovementInput) => MovementService.createMovement(input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['movements'] })
-      void queryClient.invalidateQueries({ queryKey: ['statistics'] })
+    onSuccess: async () => {
+      await invalidateMovements(queryClient)
       showToast({ title: 'Movimiento registrado', variant: 'success' })
     },
     onError: showError,
@@ -37,9 +37,8 @@ export function useUpdateMovement() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateMovementInput }) =>
       MovementService.updateMovement(id, input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['movements'] })
-      void queryClient.invalidateQueries({ queryKey: ['statistics'] })
+    onSuccess: async () => {
+      await invalidateMovements(queryClient)
       showToast({ title: 'Movimiento actualizado', variant: 'success' })
     },
     onError: showError,
@@ -52,9 +51,8 @@ export function useDeleteMovement() {
 
   return useMutation({
     mutationFn: (id: string) => MovementService.deleteMovement(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['movements'] })
-      void queryClient.invalidateQueries({ queryKey: ['statistics'] })
+    onSuccess: async () => {
+      await invalidateMovements(queryClient)
       showToast({ title: 'Movimiento eliminado', variant: 'success' })
     },
     onError: showError,

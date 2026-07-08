@@ -25,6 +25,9 @@ import {
 } from '@/components/ui/table'
 import { PageHeaderSkeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { getCategories } from '@/utils/cashCategories'
+import { CategoryColorPicker, DEFAULT_CATEGORY_COLOR, normalizeCategoryColor } from '@/components/cash/CategoryColorPicker'
+import { CategoryIconPicker } from '@/components/cash/CategoryIconPicker'
+import { DynamicIcon } from '@arraypress/lucide-icon-picker'
 import type { CashTransactionType, Category } from '@/types/cash'
 
 type Kind = 'category' | 'subcategory'
@@ -43,7 +46,7 @@ const emptyForm: CategoryForm = {
   name: '',
   type: 'EXPENSE',
   categoryId: '',
-  color: '#f97316',
+  color: DEFAULT_CATEGORY_COLOR,
   icon: '',
 }
 
@@ -64,6 +67,8 @@ export function CashCategoriesPage() {
 
   const formType = watch('type')
   const formKind = watch('kind')
+  const formColor = watch('color')
+  const formIcon = watch('icon')
   const categoryOptions = useMemo(
     () => getCategories(categories, formType),
     [categories, formType],
@@ -94,7 +99,7 @@ export function CashCategoriesPage() {
       name: category.name,
       type: category.type,
       categoryId: category.parentId ?? '',
-      color: category.color ?? '#f97316',
+      color: normalizeCategoryColor(category.color),
       icon: category.icon ?? '',
     })
   }
@@ -222,14 +227,15 @@ export function CashCategoriesPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Color</Label>
-                <Input type="color" {...register('color')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Ícono</Label>
-                <Input {...register('icon')} placeholder="groceries" />
-              </div>
+              <CategoryColorPicker
+                value={formColor}
+                onChange={(color) => setValue('color', color)}
+              />
+              <CategoryIconPicker
+                value={formIcon}
+                onChange={(icon) => setValue('icon', icon)}
+                color={formColor}
+              />
             </div>
 
             <div className="flex gap-2">
@@ -272,6 +278,7 @@ export function CashCategoriesPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Tipo de ítem</TableHead>
                   <TableHead>Categoría</TableHead>
+                  <TableHead>Ícono</TableHead>
                   <TableHead>Ingreso/Gasto</TableHead>
                   <TableHead>Color</TableHead>
                   <TableHead className="w-24" />
@@ -299,6 +306,17 @@ export function CashCategoriesPage() {
                       {kind === 'subcategory' ? categoryName : '—'}
                     </TableCell>
                     <TableCell>
+                      {item.icon ? (
+                        <DynamicIcon
+                          name={item.icon}
+                          className="h-4 w-4"
+                          style={item.color ? { color: item.color } : undefined}
+                        />
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <Badge
                         variant={item.type === 'INCOME' ? 'success' : 'destructive'}
                       >
@@ -307,15 +325,13 @@ export function CashCategoriesPage() {
                     </TableCell>
                     <TableCell>
                       {item.color ? (
-                        <span className="inline-flex items-center gap-2 text-sm">
-                          <span
-                            className="h-4 w-4 rounded-full border"
-                            style={{ backgroundColor: item.color }}
-                          />
-                          {item.color}
-                        </span>
+                        <span
+                          className="inline-block h-5 w-5 rounded-full border"
+                          style={{ backgroundColor: item.color }}
+                          title={item.color}
+                        />
                       ) : (
-                        '-'
+                        '—'
                       )}
                     </TableCell>
                     <TableCell>

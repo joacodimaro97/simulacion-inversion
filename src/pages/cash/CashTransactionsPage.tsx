@@ -26,51 +26,48 @@ import {
 } from '@/components/ui/table'
 import { PageHeaderSkeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { formatCurrency, formatDate, todayISO } from '@/utils/format'
-import { buildCategoryOptions, formatCategoryLabel } from '@/utils/cashCategories'
+import { formatCategoryLabel, isCategorySelectionValid, resolveTransactionCategoryId, splitCategorySelection } from '@/utils/cashCategories'
+import { CashTransactionFilters, resolveFilterCategoryId, type TransactionFilters } from '@/components/cash/CashTransactionFilters'
+import { CategorySubcategoryFields } from '@/components/cash/CategorySubcategoryFields'
 import { cn } from '@/utils/cn'
 import type { CashTransaction, CashTransactionType } from '@/types/cash'
 
 interface TransactionForm {
   cashAccountId: string
   type: CashTransactionType
-  categoryId: string
+  parentCategoryId: string
+  subcategoryId: string
   amount: string
   date: string
   description: string
 }
 
-interface Filters {
-  cashAccountId: string
-  categoryId: string
-  type: '' | CashTransactionType
-  startDate: string
-  endDate: string
-}
-
 export function CashTransactionsPage() {
-  const [filters, setFilters] = useState<Filters>({
+  const [filters, setFilters] = useState<TransactionFilters>({
     cashAccountId: '',
-    categoryId: '',
+    parentCategoryId: '',
+    subcategoryId: '',
     type: '',
     startDate: '',
     endDate: '',
   })
   const [editing, setEditing] = useState<CashTransaction | null>(null)
 
-  const queryFilters = useMemo(
-    () => ({
+  const queryFilters = useMemo(() => {
+    const categoryId = resolveFilterCategoryId(filters)
+    return {
       ...(filters.cashAccountId ? { cashAccountId: filters.cashAccountId } : {}),
-      ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+      ...(categoryId ? { categoryId } : {}),
       ...(filters.type ? { type: filters.type } : {}),
       ...(filters.startDate ? { startDate: filters.startDate } : {}),
       ...(filters.endDate ? { endDate: filters.endDate } : {}),
-    }),
-    [filters],
-  )
+    }
+  }, [filters])
 
   const { data: accounts = [], isLoading: accountsLoading } = useCashAccounts()
   const { data: allCategories = [] } = useCashCategories()
-  const { data: transactions = [], isLoading: txLoading } = useCashTransactions(queryFilters)
+  const { data: transactions = [], isLoading: txLoading, isFetching: txFetching } =
+    useCashTransactions(queryFilters)
   const createTx = useCreateCashTransaction()
   const updateTx = useUpdateCashTransaction()
   const deleteTx = useDeleteCashTransaction()
@@ -79,7 +76,8 @@ export function CashTransactionsPage() {
     defaultValues: {
       cashAccountId: '',
       type: 'EXPENSE',
-      categoryId: '',
+      parentCategoryId: '',
+      subcategoryId: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -87,19 +85,17 @@ export function CashTransactionsPage() {
   })
 
   const formType = watch('type')
-  const categoryOptions = useMemo(
-    () => buildCategoryOptions(allCategories, formType),
+  const parentCategoryId = watch('parentCategoryId')
+  const subcategoryId = watch('subcategoryId')
+  const formCategories = useMemo(
+    () => allCategories.filter((c) => c.type === formType),
     [allCategories, formType],
   )
-  const filterCategoryOptions = useMemo(() => {
-    if (!filters.type) {
-      return [
-        ...buildCategoryOptions(allCategories, 'INCOME'),
-        ...buildCategoryOptions(allCategories, 'EXPENSE'),
-      ]
-    }
-    return buildCategoryOptions(allCategories, filters.type)
-  }, [allCategories, filters.type])
+  const selectionValid = isCategorySelectionValid(
+    formCategories,
+    parentCategoryId,
+    subcategoryId,
+  )
 
   const categoryMap = useMemo(
     () => new Map(allCategories.map((c) => [c.id, c])),
@@ -116,20 +112,17 @@ export function CashTransactionsPage() {
     }
   }, [accounts, setValue, watch])
 
-  useEffect(() => {
-    const current = watch('categoryId')
-    const stillValid = categoryOptions.some((c) => c.id === current)
-    if (!stillValid) {
-      setValue('categoryId', categoryOptions[0]?.id ?? '')
-    }
-  }, [categoryOptions, setValue, watch])
-
   const startEdit = (tx: CashTransaction) => {
+    const { parentCategoryId: parentId, subcategoryId: subId } = splitCategorySelection(
+      tx.categoryId,
+      allCategories,
+    )
     setEditing(tx)
     reset({
       cashAccountId: tx.cashAccountId,
       type: tx.type,
-      categoryId: tx.categoryId,
+      parentCategoryId: parentId,
+      subcategoryId: subId,
       amount: String(tx.amount),
       date: tx.date.split('T')[0] ?? tx.date,
       description: tx.description ?? '',
@@ -141,7 +134,8 @@ export function CashTransactionsPage() {
     reset({
       cashAccountId: accounts[0]?.id ?? '',
       type: 'EXPENSE',
-      categoryId: '',
+      parentCategoryId: '',
+      subcategoryId: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -151,7 +145,7 @@ export function CashTransactionsPage() {
   const onSubmit = async (data: TransactionForm) => {
     const payload = {
       cashAccountId: data.cashAccountId,
-      categoryId: data.categoryId,
+      categoryId: resolveTransactionCategoryId(data.parentCategoryId, data.subcategoryId),
       type: data.type,
       amount: Number(data.amount),
       date: data.date,
@@ -168,7 +162,8 @@ export function CashTransactionsPage() {
     reset({
       cashAccountId: data.cashAccountId,
       type: data.type,
-      categoryId: data.categoryId,
+      parentCategoryId: data.parentCategoryId,
+      subcategoryId: data.subcategoryId,
       amount: '',
       date: todayISO(),
       description: '',
@@ -190,96 +185,6 @@ export function CashTransactionsPage() {
         <h1 className="text-2xl font-bold tracking-tight">Transacciones</h1>
         <p className="text-muted-foreground">Ingresos y gastos del día a día</p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Filtros</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="space-y-2">
-            <Label>Cuenta</Label>
-            <Select
-              value={filters.cashAccountId}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, cashAccountId: e.target.value }))
-              }
-            >
-              <option value="">Todas</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Tipo</Label>
-            <Select
-              value={filters.type}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  type: e.target.value as Filters['type'],
-                  categoryId: '',
-                }))
-              }
-            >
-              <option value="">Todos</option>
-              <option value="INCOME">Ingreso</option>
-              <option value="EXPENSE">Gasto</option>
-            </Select>
-          </div>
-              <div className="space-y-2">
-                <Label>Categoría / Subcategoría</Label>
-                <Select
-                  value={filters.categoryId}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, categoryId: e.target.value }))
-                  }
-                >
-                  <option value="">Todas</option>
-                  <optgroup label="Categorías">
-                    {filterCategoryOptions
-                      .filter((c) => c.group === 'category')
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                  <optgroup label="Subcategorías">
-                    {filterCategoryOptions
-                      .filter((c) => c.group === 'subcategory')
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                </Select>
-              </div>
-          <div className="space-y-2">
-            <Label>Desde</Label>
-            <Input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, startDate: e.target.value }))
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Hasta</Label>
-            <Input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, endDate: e.target.value }))
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
@@ -306,36 +211,22 @@ export function CashTransactionsPage() {
                   value={formType}
                   onChange={(e) => {
                     setValue('type', e.target.value as CashTransactionType)
-                    setValue('categoryId', '')
+                    setValue('parentCategoryId', '')
+                    setValue('subcategoryId', '')
                   }}
                 >
                   <option value="EXPENSE">Gasto</option>
                   <option value="INCOME">Ingreso</option>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Categoría / Subcategoría</Label>
-                <Select {...register('categoryId', { required: true })}>
-                  <optgroup label="Categorías">
-                    {categoryOptions
-                      .filter((c) => c.group === 'category')
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                  <optgroup label="Subcategorías">
-                    {categoryOptions
-                      .filter((c) => c.group === 'subcategory')
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                </Select>
-              </div>
+              <CategorySubcategoryFields
+                categories={formCategories}
+                type={formType}
+                parentCategoryId={parentCategoryId}
+                subcategoryId={subcategoryId}
+                onParentChange={(id) => setValue('parentCategoryId', id)}
+                onSubcategoryChange={(id) => setValue('subcategoryId', id)}
+              />
               <div className="space-y-2">
                 <Label>Monto</Label>
                 <Input
@@ -356,7 +247,10 @@ export function CashTransactionsPage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button type="submit" disabled={createTx.isPending || updateTx.isPending}>
+              <Button
+                type="submit"
+                disabled={createTx.isPending || updateTx.isPending || !selectionValid}
+              >
                 <Plus className="h-4 w-4" />
                 {editing ? 'Guardar cambios' : 'Registrar'}
               </Button>
@@ -371,17 +265,31 @@ export function CashTransactionsPage() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            Historial ({transactions.length})
-          </CardTitle>
+        <CardHeader className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-base">
+              Historial ({transactions.length})
+              {txFetching && !txLoading ? (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  Actualizando…
+                </span>
+              ) : null}
+            </CardTitle>
+          </div>
+          <CashTransactionFilters
+            filters={filters}
+            accounts={accounts}
+            categories={allCategories}
+            onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
+          />
         </CardHeader>
         <CardContent>
-          {txLoading ? (
+          {txLoading && transactions.length === 0 ? (
             <TableSkeleton rows={4} />
           ) : transactions.length === 0 ? (
             <EmptyState message="No hay transacciones con estos filtros." />
           ) : (
+            <div className={cn('transition-opacity', txFetching && 'opacity-60')}>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -453,6 +361,7 @@ export function CashTransactionsPage() {
                   ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

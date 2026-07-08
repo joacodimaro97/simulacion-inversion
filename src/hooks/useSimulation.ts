@@ -3,6 +3,7 @@ import { queryKeys } from '@/constants'
 import { SimulationService } from '@/services/SimulationService'
 import { useAccount } from '@/contexts/AccountContext'
 import { useToast } from '@/contexts/ToastContext'
+import { invalidateSimulations } from '@/utils/queryInvalidation'
 import type { RunSimulationInput, SaveSimulationInput } from '@/types/api'
 
 export function useSimulations() {
@@ -38,8 +39,8 @@ export function useSaveSimulation() {
 
   return useMutation({
     mutationFn: (input: SaveSimulationInput) => SimulationService.saveSimulation(input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['simulations'] })
+    onSuccess: async () => {
+      await invalidateSimulations(queryClient)
       showToast({ title: 'Simulación guardada', variant: 'success' })
     },
     onError: showError,
@@ -52,8 +53,8 @@ export function useDeleteSimulation() {
 
   return useMutation({
     mutationFn: (id: string) => SimulationService.deleteSimulation(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['simulations'] })
+    onSuccess: async () => {
+      await invalidateSimulations(queryClient)
       showToast({ title: 'Simulación eliminada', variant: 'success' })
     },
     onError: showError,
