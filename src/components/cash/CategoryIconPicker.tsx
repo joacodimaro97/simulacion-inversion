@@ -132,7 +132,7 @@ export function CategoryIconPicker({ value, onChange, color }: CategoryIconPicke
                       title={slug}
                       onClick={() => handleSelect(slug)}
                       className={cn(
-                        'flex h-9 w-9 items-center justify-center rounded-md transition-colors',
+                        'flex h-11 w-11 items-center justify-center rounded-md transition-colors sm:h-9 sm:w-9',
                         selected
                           ? 'bg-primary/10 text-primary ring-1 ring-primary/30'
                           : 'text-muted-foreground hover:bg-accent hover:text-foreground',

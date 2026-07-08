@@ -21,9 +21,10 @@ interface CashTransactionFiltersProps {
 }
 
 const selectClass =
-  'h-8 w-auto min-w-0 shrink-0 bg-background px-2 text-sm shadow-none'
+  'h-10 w-full min-w-0 shrink-0 bg-background px-2 text-base shadow-none md:h-8 md:w-auto md:text-sm'
 
-const dateClass = 'h-8 w-[8.5rem] shrink-0 px-2 text-sm shadow-none'
+const dateClass =
+  'h-10 w-full shrink-0 px-2 text-base shadow-none md:h-8 md:w-[8.5rem] md:text-sm'
 
 export function CashTransactionFilters({
   filters,
@@ -55,12 +56,13 @@ export function CashTransactionFilters({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-2">
+    <div className="rounded-lg border bg-muted/40 p-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
       <Select
         aria-label="Cuenta"
         value={filters.cashAccountId}
         onChange={(e) => onChange({ cashAccountId: e.target.value })}
-        className={`${selectClass} w-[8.5rem] sm:w-[10rem]`}
+        className={`${selectClass} sm:w-[8.5rem] md:w-[10rem]`}
       >
         <option value="">Todas las cuentas</option>
         {accounts.map((a) => (
@@ -74,7 +76,7 @@ export function CashTransactionFilters({
         aria-label="Tipo"
         value={filters.type}
         onChange={(e) => handleTypeChange(e.target.value as TransactionFilters['type'])}
-        className={`${selectClass} w-[6.5rem]`}
+        className={`${selectClass} sm:w-[6.5rem]`}
       >
         <option value="">Todos</option>
         <option value="INCOME">Ingreso</option>
@@ -85,7 +87,7 @@ export function CashTransactionFilters({
         aria-label="Categoría"
         value={filters.parentCategoryId}
         onChange={(e) => handleParentChange(e.target.value)}
-        className={`${selectClass} w-[8rem] sm:w-[9.5rem]`}
+        className={`${selectClass} sm:w-[8rem] md:w-[9.5rem]`}
       >
         <option value="">Todas</option>
         {parentCategories.map((c) => (
@@ -100,7 +102,7 @@ export function CashTransactionFilters({
           aria-label="Subcategoría"
           value={filters.subcategoryId}
           onChange={(e) => onChange({ subcategoryId: e.target.value })}
-          className={`${selectClass} w-[8rem] sm:w-[9.5rem]`}
+          className={`${selectClass} sm:w-[8rem] md:w-[9.5rem]`}
         >
           <option value="">Todas</option>
           {subcategories.map((c) => (
@@ -116,15 +118,16 @@ export function CashTransactionFilters({
         type="date"
         value={filters.startDate}
         onChange={(e) => onChange({ startDate: e.target.value })}
-        className={dateClass}
+        className={`${dateClass} col-span-1`}
       />
       <Input
         aria-label="Hasta"
         type="date"
         value={filters.endDate}
         onChange={(e) => onChange({ endDate: e.target.value })}
-        className={dateClass}
+        className={`${dateClass} col-span-1`}
       />
+      </div>
     </div>
   )
 }

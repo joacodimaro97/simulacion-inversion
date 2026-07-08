@@ -28,7 +28,7 @@ interface CashPeriodFiltersProps {
 }
 
 const selectClass =
-  'h-8 w-auto min-w-0 shrink-0 bg-background px-2 text-sm shadow-none'
+  'h-10 w-full min-w-0 shrink-0 bg-background px-2 text-base shadow-none md:h-8 md:w-auto md:text-sm'
 
 export function CashPeriodFilters({
   year,
@@ -41,12 +41,13 @@ export function CashPeriodFilters({
   onAccountChange,
 }: CashPeriodFiltersProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-2">
+    <div className="rounded-lg border bg-muted/40 p-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
       <Select
         aria-label="Mes"
         value={String(month)}
         onChange={(e) => onMonthChange(Number(e.target.value))}
-        className={`${selectClass} w-[7.5rem]`}
+        className={`${selectClass} sm:w-[7.5rem]`}
       >
         {MONTHS.map((m) => (
           <option key={m.value} value={String(m.value)}>
@@ -58,7 +59,7 @@ export function CashPeriodFilters({
         aria-label="Año"
         value={String(year)}
         onChange={(e) => onYearChange(Number(e.target.value))}
-        className={`${selectClass} w-[5.5rem]`}
+        className={`${selectClass} sm:w-[5.5rem]`}
       >
         {years.map((y) => (
           <option key={y} value={String(y)}>
@@ -70,7 +71,7 @@ export function CashPeriodFilters({
         aria-label="Cuenta"
         value={cashAccountId}
         onChange={(e) => onAccountChange(e.target.value)}
-        className={`${selectClass} w-[8.5rem] sm:w-[10rem]`}
+        className={`${selectClass} col-span-2 sm:col-span-1 sm:w-[8.5rem] md:w-[10rem]`}
       >
         <option value="">Todas</option>
         {accounts.map((a) => (
@@ -79,6 +80,7 @@ export function CashPeriodFilters({
           </option>
         ))}
       </Select>
+      </div>
     </div>
   )
 }

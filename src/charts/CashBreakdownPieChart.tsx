@@ -64,7 +64,11 @@ export function CashBreakdownPieChart({ data, emptyMessage }: CashBreakdownPieCh
             borderRadius: '8px',
           }}
         />
-        <Legend />
+        <Legend
+          wrapperStyle={{ fontSize: 12 }}
+          layout="horizontal"
+          verticalAlign="bottom"
+        />
       </PieChart>
     </ResponsiveContainer>
   )

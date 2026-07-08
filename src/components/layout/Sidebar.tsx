@@ -6,17 +6,18 @@ import {
   ArrowLeftRight,
   LineChart,
   GitCompareArrows,
-  TrendingUp,
   Wallet,
   Tags,
   Receipt,
   PiggyBank,
   LogOut,
   ChevronDown,
+  Menu,
 } from 'lucide-react'
 import { ROUTES } from '@/constants'
 import { cn } from '@/utils/cn'
 import { useAuth } from '@/contexts/AuthContext'
+import { Dialog } from '@/components/ui/dialog'
 
 const investmentItems = [
   { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
@@ -36,9 +37,9 @@ const cashItems = [
 const mobileItems = [
   { to: ROUTES.CASH, label: 'Resumen', icon: Wallet },
   { to: ROUTES.CASH_TRANSACTIONS, label: 'Movimientos', icon: Receipt },
+  { to: ROUTES.CASH_CATEGORIES, label: 'Categorías', icon: Tags },
   { to: ROUTES.CASH_ACCOUNTS, label: 'Cuentas', icon: PiggyBank },
-  { to: ROUTES.DASHBOARD, label: 'Inversiones', icon: TrendingUp },
-]
+] as const
 
 function isInvestmentPath(pathname: string) {
   return investmentItems.some((item) =>
@@ -188,27 +189,78 @@ export function Sidebar() {
 }
 
 export function MobileNav() {
+  const { pathname } = useLocation()
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreActive = isInvestmentPath(pathname)
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card lg:hidden">
-      <div className="flex justify-around py-2">
-        {mobileItems.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === ROUTES.CASH || to === ROUTES.DASHBOARD}
-            className={({ isActive }) =>
-              cn(
-                'flex flex-col cursor-pointer items-center gap-1 px-2 py-1 text-xs transition-colors',
-                isActive ? 'text-primary' : 'text-muted-foreground',
-              )
-            }
+    <>
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden">
+        <div className="flex">
+          {mobileItems.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === ROUTES.CASH}
+              className={({ isActive }) =>
+                cn(
+                  'flex min-h-14 min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors sm:text-xs',
+                  isActive ? 'text-primary' : 'text-muted-foreground',
+                )
+              }
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              <span className="max-w-full truncate">{label}</span>
+            </NavLink>
+          ))}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            className={cn(
+              'flex min-h-14 min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors sm:text-xs',
+              moreActive ? 'text-primary' : 'text-muted-foreground',
+            )}
           >
-            <Icon className="h-5 w-5" />
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </div>
-    </nav>
+            <Menu className="h-5 w-5 shrink-0" />
+            <span className="max-w-full truncate">Más</span>
+          </button>
+        </div>
+      </nav>
+
+      <Dialog
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        title="Más opciones"
+        description="Inversiones y otras secciones"
+      >
+        <div className="space-y-6">
+          <div className="space-y-1">
+            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Inversiones
+            </p>
+            {investmentItems.map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === ROUTES.DASHBOARD}
+                onClick={() => setMoreOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-foreground hover:bg-muted',
+                  )
+                }
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      </Dialog>
+    </>
   )
 }
 
@@ -226,7 +278,7 @@ export function MobileTopBar() {
       <button
         type="button"
         onClick={logout}
-        className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive"
+        className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive"
       >
         <LogOut className="h-4 w-4" />
         Salir

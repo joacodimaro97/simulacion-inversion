@@ -118,23 +118,21 @@ export function CashDashboardPage() {
     <div className="space-y-8 animate-in">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Gastos e ingresos</h1>
-          <p className="text-muted-foreground">Resumen de tu flujo de efectivo</p>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Gastos e ingresos</h1>
+          <p className="text-sm text-muted-foreground">Resumen de tu flujo de efectivo</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
-            size="sm"
             variant="outline"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-none"
             onClick={() => openQuickAdd('EXPENSE')}
           >
             <Plus className="mr-1 h-4 w-4" />
             Gasto
           </Button>
           <Button
-            size="sm"
             variant="outline"
-            className="text-success hover:bg-success/10 hover:text-success"
+            className="flex-1 text-success hover:bg-success/10 hover:text-success sm:flex-none"
             onClick={() => openQuickAdd('INCOME')}
           >
             <Plus className="mr-1 h-4 w-4" />
@@ -142,7 +140,7 @@ export function CashDashboardPage() {
           </Button>
           <Link
             to={ROUTES.CASH_TRANSACTIONS}
-            className="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs font-medium hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex h-10 w-full items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground sm:h-8 sm:w-auto sm:text-xs"
           >
             Ver transacciones
           </Link>
@@ -280,9 +278,9 @@ export function CashDashboardPage() {
                 return (
                   <div
                     key={tx.id}
-                    className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
+                    className="flex flex-col gap-2 border-b pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-medium">
                         {category
                           ? formatCategoryLabel(category, categories)
@@ -293,7 +291,7 @@ export function CashDashboardPage() {
                         {tx.description ? ` · ${tx.description}` : ''}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-2 sm:justify-end">
                       <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
                         {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
                       </Badge>

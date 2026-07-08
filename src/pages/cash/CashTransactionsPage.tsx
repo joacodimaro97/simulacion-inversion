@@ -29,6 +29,7 @@ import { formatCurrency, formatDate, todayISO } from '@/utils/format'
 import { formatCategoryLabel, isCategorySelectionValid, resolveTransactionCategoryId, splitCategorySelection } from '@/utils/cashCategories'
 import { CashTransactionFilters, resolveFilterCategoryId, type TransactionFilters } from '@/components/cash/CashTransactionFilters'
 import { CategorySubcategoryFields } from '@/components/cash/CategorySubcategoryFields'
+import { QuickTransactionModal } from '@/components/cash/QuickTransactionModal'
 import { cn } from '@/utils/cn'
 import type { CashTransaction, CashTransactionType } from '@/types/cash'
 
@@ -52,6 +53,7 @@ export function CashTransactionsPage() {
     endDate: '',
   })
   const [editing, setEditing] = useState<CashTransaction | null>(null)
+  const [quickOpen, setQuickOpen] = useState(false)
 
   const queryFilters = useMemo(() => {
     const categoryId = resolveFilterCategoryId(filters)
@@ -127,6 +129,9 @@ export function CashTransactionsPage() {
       date: tx.date.split('T')[0] ?? tx.date,
       description: tx.description ?? '',
     })
+    requestAnimationFrame(() => {
+      document.getElementById('transaction-form')?.scrollIntoView({ behavior: 'smooth' })
+    })
   }
 
   const cancelEdit = () => {
@@ -180,13 +185,21 @@ export function CashTransactionsPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Transacciones</h1>
-        <p className="text-muted-foreground">Ingresos y gastos del día a día</p>
+    <div className="space-y-6 animate-in md:space-y-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Transacciones</h1>
+          <p className="text-sm text-muted-foreground">Ingresos y gastos del día a día</p>
+        </div>
+        <Button className="md:hidden" onClick={() => setQuickOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Nueva transacción
+        </Button>
       </div>
 
-      <Card>
+      <QuickTransactionModal open={quickOpen} onClose={() => setQuickOpen(false)} />
+
+      <Card id="transaction-form" className={cn(!editing && 'hidden md:block')}>
         <CardHeader>
           <CardTitle className="text-base">
             {editing ? 'Editar transacción' : 'Nueva transacción'}
@@ -290,7 +303,78 @@ export function CashTransactionsPage() {
             <EmptyState message="No hay transacciones con estos filtros." />
           ) : (
             <div className={cn('transition-opacity', txFetching && 'opacity-60')}>
-            <Table>
+              <div className="space-y-3 md:hidden">
+                {[...transactions]
+                  .sort((a, b) => b.date.localeCompare(a.date))
+                  .map((tx) => {
+                    const category = categoryMap.get(tx.categoryId)
+                    return (
+                      <div
+                        key={tx.id}
+                        className="rounded-lg border bg-card p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">
+                              {category
+                                ? formatCategoryLabel(category, allCategories)
+                                : 'Sin categoría'}
+                            </p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {formatDate(tx.date)}
+                              {accountMap.get(tx.cashAccountId)
+                                ? ` · ${accountMap.get(tx.cashAccountId)}`
+                                : ''}
+                            </p>
+                            {tx.description && (
+                              <p className="mt-1 truncate text-xs text-muted-foreground">
+                                {tx.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
+                              {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
+                            </Badge>
+                            <span
+                              className={cn(
+                                'text-sm font-semibold',
+                                tx.type === 'INCOME' ? 'text-success' : 'text-destructive',
+                              )}
+                            >
+                              {tx.type === 'INCOME' ? '+' : '-'}
+                              {formatCurrency(tx.amount)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex gap-2 border-t pt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            className="flex-1"
+                            onClick={() => startEdit(tx)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Editar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            className="flex-1 text-destructive hover:text-destructive"
+                            onClick={() => deleteTx.mutate(tx.id)}
+                            disabled={deleteTx.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Eliminar
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            <Table className="hidden md:table">
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>

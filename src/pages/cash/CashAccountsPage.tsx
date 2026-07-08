@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table'
 import { PageHeaderSkeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/utils/format'
+import { cn } from '@/utils/cn'
 import type { CashAccount } from '@/types/cash'
 
 interface AccountForm {
@@ -44,12 +45,14 @@ export function CashAccountsPage() {
   const updateAccount = useUpdateCashAccount()
   const deleteAccount = useDeleteCashAccount()
   const [editing, setEditing] = useState<CashAccount | null>(null)
+  const [mobileFormOpen, setMobileFormOpen] = useState(false)
 
   const { register, handleSubmit, reset } = useForm<AccountForm>({
     defaultValues: emptyForm,
   })
 
   const startEdit = (account: CashAccount) => {
+    setMobileFormOpen(true)
     setEditing(account)
     reset({
       name: account.name,
@@ -61,6 +64,7 @@ export function CashAccountsPage() {
 
   const cancelEdit = () => {
     setEditing(null)
+    setMobileFormOpen(false)
     reset(emptyForm)
   }
 
@@ -94,6 +98,7 @@ export function CashAccountsPage() {
       openingBalance,
     })
     reset(emptyForm)
+    setMobileFormOpen(false)
   }
 
   if (isLoading) {
@@ -106,13 +111,32 @@ export function CashAccountsPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Cuentas de efectivo</h1>
-        <p className="text-muted-foreground">Cajas y cuentas para gastos e ingresos</p>
+    <div className="space-y-6 animate-in md:space-y-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Cuentas de efectivo</h1>
+          <p className="text-sm text-muted-foreground">Cajas y cuentas para gastos e ingresos</p>
+        </div>
+        {!editing && !mobileFormOpen && (
+          <Button
+            className="md:hidden"
+            onClick={() => {
+              setMobileFormOpen(true)
+              requestAnimationFrame(() => {
+                document.getElementById('account-form')?.scrollIntoView({ behavior: 'smooth' })
+              })
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Nueva cuenta
+          </Button>
+        )}
       </div>
 
-      <Card>
+      <Card
+        id="account-form"
+        className={cn(!editing && !mobileFormOpen && 'hidden md:block')}
+      >
         <CardHeader>
           <CardTitle className="text-base">
             {editing ? 'Editar cuenta' : 'Nueva cuenta'}
@@ -160,6 +184,16 @@ export function CashAccountsPage() {
                   Cancelar
                 </Button>
               )}
+              {!editing && mobileFormOpen && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="md:hidden"
+                  onClick={() => setMobileFormOpen(false)}
+                >
+                  Cancelar
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>
@@ -173,7 +207,49 @@ export function CashAccountsPage() {
           {accounts.length === 0 ? (
             <EmptyState message="No hay cuentas. Creá la primera arriba." />
           ) : (
-            <Table>
+            <>
+              <div className="space-y-3 md:hidden">
+                {accounts.map((account) => (
+                  <div key={account.id} className="rounded-lg border bg-card p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium">{account.name}</p>
+                        {account.description && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">{account.description}</p>
+                        )}
+                        <p className="mt-1 text-xs text-muted-foreground">{account.currency}</p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold">
+                        {formatCurrency(account.openingBalance ?? 0)}
+                      </p>
+                    </div>
+                    <div className="mt-3 flex gap-2 border-t pt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        className="flex-1"
+                        onClick={() => startEdit(account)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        className="flex-1 text-destructive hover:text-destructive"
+                        onClick={() => deleteAccount.mutate(account.id)}
+                        disabled={deleteAccount.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            <Table className="hidden md:table">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
@@ -217,6 +293,7 @@ export function CashAccountsPage() {
                 ))}
               </TableBody>
             </Table>
+            </>
           )}
         </CardContent>
       </Card>

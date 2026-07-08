@@ -28,6 +28,7 @@ import { getCategories } from '@/utils/cashCategories'
 import { CategoryColorPicker, DEFAULT_CATEGORY_COLOR, normalizeCategoryColor } from '@/components/cash/CategoryColorPicker'
 import { CategoryIconPicker } from '@/components/cash/CategoryIconPicker'
 import { DynamicIcon } from '@arraypress/lucide-icon-picker'
+import { cn } from '@/utils/cn'
 import type { CashTransactionType, Category } from '@/types/cash'
 
 type Kind = 'category' | 'subcategory'
@@ -60,6 +61,7 @@ export function CashCategoriesPage() {
   const updateCategory = useUpdateCashCategory()
   const deleteCategory = useDeleteCashCategory()
   const [editing, setEditing] = useState<Category | null>(null)
+  const [mobileFormOpen, setMobileFormOpen] = useState(false)
 
   const { register, handleSubmit, reset, setValue, watch } = useForm<CategoryForm>({
     defaultValues: emptyForm,
@@ -93,6 +95,7 @@ export function CashCategoriesPage() {
   }, [categories])
 
   const startEdit = (category: Category) => {
+    setMobileFormOpen(true)
     setEditing(category)
     reset({
       kind: category.parentId ? 'subcategory' : 'category',
@@ -106,6 +109,7 @@ export function CashCategoriesPage() {
 
   const cancelEdit = () => {
     setEditing(null)
+    setMobileFormOpen(false)
     reset(emptyForm)
   }
 
@@ -137,6 +141,7 @@ export function CashCategoriesPage() {
       icon: data.icon || undefined,
     })
     reset({ ...emptyForm, type: data.type, kind: data.kind })
+    setMobileFormOpen(false)
   }
 
   if (isLoading) {
@@ -149,15 +154,34 @@ export function CashCategoriesPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Categorías</h1>
-        <p className="text-muted-foreground">
-          Creá categorías y, si querés, subcategorías dentro de ellas
-        </p>
+    <div className="space-y-6 animate-in md:space-y-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Categorías</h1>
+          <p className="text-sm text-muted-foreground">
+            Creá categorías y, si querés, subcategorías dentro de ellas
+          </p>
+        </div>
+        {!editing && !mobileFormOpen && (
+          <Button
+            className="md:hidden"
+            onClick={() => {
+              setMobileFormOpen(true)
+              requestAnimationFrame(() => {
+                document.getElementById('category-form')?.scrollIntoView({ behavior: 'smooth' })
+              })
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Nueva categoría
+          </Button>
+        )}
       </div>
 
-      <Card>
+      <Card
+        id="category-form"
+        className={cn(!editing && !mobileFormOpen && 'hidden md:block')}
+      >
         <CardHeader>
           <CardTitle className="text-base">
             {editing
@@ -251,13 +275,23 @@ export function CashCategoriesPage() {
                   Cancelar
                 </Button>
               )}
+              {!editing && mobileFormOpen && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="md:hidden"
+                  onClick={() => setMobileFormOpen(false)}
+                >
+                  Cancelar
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>
       </Card>
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
-        <TabsList>
+        <TabsList className="w-full overflow-x-auto">
           <TabsTrigger value="ALL">Todas</TabsTrigger>
           <TabsTrigger value="INCOME">Ingresos</TabsTrigger>
           <TabsTrigger value="EXPENSE">Gastos</TabsTrigger>
@@ -272,7 +306,76 @@ export function CashCategoriesPage() {
           {displayRows.length === 0 ? (
             <EmptyState message="No hay categorías. Creá la primera arriba." />
           ) : (
-            <Table>
+            <>
+              <div className="space-y-3 md:hidden">
+                {displayRows.map(({ item, kind, categoryName }) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border bg-card p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 items-start gap-2">
+                        {item.icon ? (
+                          <DynamicIcon
+                            name={item.icon}
+                            className="mt-0.5 h-4 w-4 shrink-0"
+                            style={item.color ? { color: item.color } : undefined}
+                          />
+                        ) : item.color ? (
+                          <span
+                            className="mt-1 inline-block h-4 w-4 shrink-0 rounded-full border"
+                            style={{ backgroundColor: item.color }}
+                          />
+                        ) : null}
+                        <div className="min-w-0">
+                          <p className={cn('font-medium', kind === 'subcategory' && 'text-muted-foreground')}>
+                            {kind === 'subcategory' && <span className="mr-1">·</span>}
+                            {item.name}
+                          </p>
+                          {kind === 'subcategory' && categoryName && (
+                            <p className="text-xs text-muted-foreground">{categoryName}</p>
+                          )}
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            <Badge variant={kind === 'category' ? 'default' : 'secondary'} className="text-[10px]">
+                              {kind === 'category' ? 'Categoría' : 'Subcategoría'}
+                            </Badge>
+                            <Badge
+                              variant={item.type === 'INCOME' ? 'success' : 'destructive'}
+                              className="text-[10px]"
+                            >
+                              {item.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex gap-2 border-t pt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        className="flex-1"
+                        onClick={() => startEdit(item)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        className="flex-1 text-destructive hover:text-destructive"
+                        onClick={() => deleteCategory.mutate(item.id)}
+                        disabled={deleteCategory.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            <Table className="hidden md:table">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
@@ -359,6 +462,7 @@ export function CashCategoriesPage() {
                 ))}
               </TableBody>
             </Table>
+            </>
           )}
         </CardContent>
       </Card>

@@ -122,7 +122,7 @@ export function QuickTransactionModal({
                 setValue('subcategoryId', '')
               }}
               className={cn(
-                'rounded-md py-2 text-sm font-medium transition-colors',
+                'min-h-11 rounded-md py-2.5 text-sm font-medium transition-colors',
                 formType === t
                   ? t === 'EXPENSE'
                     ? 'bg-destructive text-destructive-foreground shadow'
