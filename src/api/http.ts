@@ -6,6 +6,7 @@ const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 export const http = axios.create({
   baseURL,
+  timeout: 60_000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -29,6 +30,11 @@ export function setUnauthorizedHandler(handler: () => void): void {
   onUnauthorized = handler
 }
 
+function isPublicAuthRequest(url?: string): boolean {
+  if (!url) return false
+  return url.includes('/auth/login') || url.includes('/auth/register')
+}
+
 http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getStoredToken()
   if (token) {
@@ -40,17 +46,34 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 http.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiError>) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const hadAuth = Boolean(error.config?.headers?.Authorization)
+    const url = error.config?.url
+
+    if (status === 401 && hadAuth && !isPublicAuthRequest(url)) {
       clearStoredToken()
       onUnauthorized?.()
     }
+
     return Promise.reject(error)
   },
 )
 
 export function getApiError(error: unknown): ApiError {
-  if (axios.isAxiosError(error) && error.response?.data) {
-    return error.response.data as ApiError
+  if (axios.isAxiosError(error)) {
+    if (error.response?.data) {
+      return error.response.data as ApiError
+    }
+    if (!error.response) {
+      return {
+        statusCode: 0,
+        error: 'NetworkError',
+        message:
+          error.code === 'ECONNABORTED'
+            ? 'El servidor tardó demasiado en responder. Intentá de nuevo.'
+            : 'No se pudo conectar con el servidor. Verificá tu conexión.',
+      }
+    }
   }
   return {
     statusCode: 500,

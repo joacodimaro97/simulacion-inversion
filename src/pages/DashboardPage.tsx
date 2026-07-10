@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Wallet,
   PiggyBank,
@@ -8,11 +8,14 @@ import {
   BarChart3,
   Target,
   ArrowUpRight,
+  ArrowDownLeft,
 } from 'lucide-react'
 import { useStatistics } from '@/hooks/useStatistics'
 import { usePerformance, useMonthlyPerformance } from '@/hooks/usePerformance'
 import { useMovements } from '@/hooks/useMovements'
 import { useAccount } from '@/contexts/AccountContext'
+import { FundingModal } from '@/components/cash/FundingModal'
+import { Button } from '@/components/ui/button'
 import { MetricCard } from '@/components/common/MetricCard'
 import { ChartCard } from '@/components/common/ChartCard'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -27,8 +30,12 @@ import { buildDistributionBuckets, formatMonthKey } from '@/utils/mappers'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MetricCardSkeleton, ChartSkeleton, PageHeaderSkeleton } from '@/components/ui/skeleton'
 
+import type { FundingType } from '@/types/cash'
+
 export function DashboardPage() {
-  const { isReady } = useAccount()
+  const { accountId, isReady } = useAccount()
+  const [fundingOpen, setFundingOpen] = useState(false)
+  const [fundingType, setFundingType] = useState<FundingType>('CASH_TO_INVESTMENT')
   const { data: stats, isLoading: statsLoading } = useStatistics()
   const { data: performances = [], isLoading: perfLoading } = usePerformance()
   const { data: monthly = [], isLoading: monthlyLoading } = useMonthlyPerformance()
@@ -114,9 +121,40 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-in">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Seguimiento de tu inversión en FCI</p>
+      <FundingModal
+        open={fundingOpen}
+        onClose={() => setFundingOpen(false)}
+        defaultType={fundingType}
+        defaultInvestmentAccountId={accountId ?? undefined}
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">Seguimiento de tu inversión en FCI</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setFundingType('CASH_TO_INVESTMENT')
+              setFundingOpen(true)
+            }}
+          >
+            <ArrowUpRight className="h-4 w-4" />
+            Depositar desde efectivo
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setFundingType('INVESTMENT_TO_CASH')
+              setFundingOpen(true)
+            }}
+          >
+            <ArrowDownLeft className="h-4 w-4" />
+            Retirar a efectivo
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

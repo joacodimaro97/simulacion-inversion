@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, ArrowLeftRight, TrendingUp } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useCashAccounts } from '@/hooks/useCashAccounts'
 import { useCashCategories } from '@/hooks/useCashCategories'
 import {
@@ -31,7 +32,36 @@ import { CashTransactionFilters, resolveFilterCategoryId, type TransactionFilter
 import { CategorySubcategoryFields } from '@/components/cash/CategorySubcategoryFields'
 import { QuickTransactionModal } from '@/components/cash/QuickTransactionModal'
 import { cn } from '@/utils/cn'
+import { ROUTES } from '@/constants'
 import type { CashTransaction, CashTransactionType } from '@/types/cash'
+
+function isSystemTransaction(tx: CashTransaction) {
+  return Boolean(tx.transferId || tx.fundingId)
+}
+
+function SystemBadge({ tx }: { tx: CashTransaction }) {
+  if (tx.transferId) {
+    return (
+      <Link to={ROUTES.CASH_TRANSFERS}>
+        <Badge variant="slate" className="hover:opacity-80">
+          <ArrowLeftRight className="mr-1 h-3 w-3" />
+          Transferencia
+        </Badge>
+      </Link>
+    )
+  }
+  if (tx.fundingId) {
+    return (
+      <Link to={ROUTES.CASH_FUNDINGS}>
+        <Badge variant="secondary" className="hover:opacity-80">
+          <TrendingUp className="mr-1 h-3 w-3" />
+          Efectivo ↔ Inv.
+        </Badge>
+      </Link>
+    )
+  }
+  return null
+}
 
 interface TransactionForm {
   cashAccountId: string
@@ -51,6 +81,7 @@ export function CashTransactionsPage() {
     type: '',
     startDate: '',
     endDate: '',
+    hideSystemMovements: true,
   })
   const [editing, setEditing] = useState<CashTransaction | null>(null)
   const [quickOpen, setQuickOpen] = useState(false)
@@ -63,6 +94,9 @@ export function CashTransactionsPage() {
       ...(filters.type ? { type: filters.type } : {}),
       ...(filters.startDate ? { startDate: filters.startDate } : {}),
       ...(filters.endDate ? { endDate: filters.endDate } : {}),
+      ...(filters.hideSystemMovements
+        ? { excludeTransfers: true, excludeFundings: true }
+        : {}),
     }
   }, [filters])
 
@@ -115,6 +149,7 @@ export function CashTransactionsPage() {
   }, [accounts, setValue, watch])
 
   const startEdit = (tx: CashTransaction) => {
+    if (isSystemTransaction(tx)) return
     const { parentCategoryId: parentId, subcategoryId: subId } = splitCategorySelection(
       tx.categoryId,
       allCategories,
@@ -333,20 +368,29 @@ export function CashTransactionsPage() {
                             )}
                           </div>
                           <div className="flex shrink-0 flex-col items-end gap-1">
-                            <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
-                              {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
-                            </Badge>
+                            {isSystemTransaction(tx) ? (
+                              <SystemBadge tx={tx} />
+                            ) : (
+                              <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
+                                {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
+                              </Badge>
+                            )}
                             <span
                               className={cn(
                                 'text-sm font-semibold',
-                                tx.type === 'INCOME' ? 'text-success' : 'text-destructive',
+                                isSystemTransaction(tx)
+                                  ? 'text-slate-600'
+                                  : tx.type === 'INCOME'
+                                    ? 'text-success'
+                                    : 'text-destructive',
                               )}
                             >
-                              {tx.type === 'INCOME' ? '+' : '-'}
+                              {!isSystemTransaction(tx) && (tx.type === 'INCOME' ? '+' : '-')}
                               {formatCurrency(tx.amount)}
                             </span>
                           </div>
                         </div>
+                        {!isSystemTransaction(tx) && (
                         <div className="mt-3 flex gap-2 border-t pt-3">
                           <Button
                             variant="outline"
@@ -370,6 +414,7 @@ export function CashTransactionsPage() {
                             Eliminar
                           </Button>
                         </div>
+                        )}
                       </div>
                     )
                   })}
@@ -393,9 +438,13 @@ export function CashTransactionsPage() {
                     <TableRow key={tx.id}>
                       <TableCell>{formatDate(tx.date)}</TableCell>
                       <TableCell>
-                        <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
-                          {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
-                        </Badge>
+                        {isSystemTransaction(tx) ? (
+                          <SystemBadge tx={tx} />
+                        ) : (
+                          <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
+                            {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         {(() => {
@@ -411,16 +460,21 @@ export function CashTransactionsPage() {
                       <TableCell
                         className={cn(
                           'font-semibold',
-                          tx.type === 'INCOME' ? 'text-success' : 'text-destructive',
+                          isSystemTransaction(tx)
+                            ? 'text-slate-600'
+                            : tx.type === 'INCOME'
+                              ? 'text-success'
+                              : 'text-destructive',
                         )}
                       >
-                        {tx.type === 'INCOME' ? '+' : '-'}
+                        {!isSystemTransaction(tx) && (tx.type === 'INCOME' ? '+' : '-')}
                         {formatCurrency(tx.amount)}
                       </TableCell>
                       <TableCell className="max-w-40 truncate text-muted-foreground">
                         {tx.description || '-'}
                       </TableCell>
                       <TableCell>
+                        {!isSystemTransaction(tx) && (
                         <div className="flex gap-1">
                           <Button
                             variant="ghost"
@@ -440,6 +494,7 @@ export function CashTransactionsPage() {
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

@@ -1,7 +1,7 @@
 import { cn } from '@/utils/cn'
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'secondary' | 'success' | 'destructive' | 'outline'
+  variant?: 'default' | 'secondary' | 'success' | 'destructive' | 'outline' | 'slate'
 }
 
 export function Badge({ className, variant = 'default', ...props }: BadgeProps) {
@@ -14,6 +14,7 @@ export function Badge({ className, variant = 'default', ...props }: BadgeProps) 
           'border-transparent bg-secondary text-secondary-foreground': variant === 'secondary',
           'border-transparent bg-success text-success-foreground': variant === 'success',
           'border-transparent bg-destructive text-destructive-foreground': variant === 'destructive',
+          'border-transparent bg-slate-500 text-white': variant === 'slate',
           'text-foreground': variant === 'outline',
         },
         className,

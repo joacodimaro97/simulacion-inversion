@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { Plus, Trash2, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
+import { Plus, Trash2, ArrowDownLeft, ArrowUpRight, TrendingUp } from 'lucide-react'
 import { useAccount } from '@/contexts/AccountContext'
 import { useMovements, useCreateMovement, useDeleteMovement } from '@/hooks/useMovements'
+import { useFundings } from '@/hooks/useFundings'
 import { useStatistics } from '@/hooks/useStatistics'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +23,7 @@ import {
 } from '@/components/ui/table'
 import { MetricCardSkeleton, PageHeaderSkeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { formatCurrency, formatDate, todayISO } from '@/utils/format'
+import { ROUTES } from '@/constants'
 import type { MovementType } from '@/types/api'
 
 interface MovementForm {
@@ -33,6 +36,9 @@ interface MovementForm {
 export function MovementsPage() {
   const { accountId, isReady } = useAccount()
   const { data: movements = [], isLoading } = useMovements()
+  const { data: fundings = [] } = useFundings(
+    accountId ? { investmentAccountId: accountId } : undefined,
+  )
   const { data: stats, isLoading: statsLoading } = useStatistics()
   const createMovement = useCreateMovement()
   const deleteMovement = useDeleteMovement()
@@ -45,6 +51,14 @@ export function MovementsPage() {
       description: '',
     },
   })
+
+  const fundingMovementIds = useMemo(
+    () => new Set(fundings.map((f) => f.investmentMovementId)),
+    [fundings],
+  )
+
+  const isFundingMovement = (movementId: string, fundingId: string | null) =>
+    Boolean(fundingId) || fundingMovementIds.has(movementId)
 
   const totals = useMemo(() => {
     const deposits = movements
@@ -86,7 +100,13 @@ export function MovementsPage() {
     <div className="space-y-8 animate-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Movimientos</h1>
-        <p className="text-muted-foreground">Registrá depósitos y retiros de capital</p>
+        <p className="text-muted-foreground">
+          Para mover plata desde/hacia efectivo, usá{' '}
+          <Link to={ROUTES.CASH_FUNDINGS} className="text-primary underline">
+            Efectivo ↔ Inversión
+          </Link>
+          .
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -179,18 +199,28 @@ export function MovementsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {[...movements].reverse().map((movement) => (
+                {[...movements].reverse().map((movement) => {
+                  const fromFunding = isFundingMovement(movement.id, movement.fundingId)
+                  return (
                   <TableRow key={movement.id}>
                     <TableCell>{formatDate(movement.date)}</TableCell>
                     <TableCell>
-                      <Badge variant={movement.type === 'DEPOSIT' ? 'success' : 'destructive'}>
-                        {movement.type === 'DEPOSIT' ? (
-                          <ArrowDownLeft className="mr-1 h-3 w-3" />
-                        ) : (
-                          <ArrowUpRight className="mr-1 h-3 w-3" />
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge variant={movement.type === 'DEPOSIT' ? 'success' : 'destructive'}>
+                          {movement.type === 'DEPOSIT' ? (
+                            <ArrowDownLeft className="mr-1 h-3 w-3" />
+                          ) : (
+                            <ArrowUpRight className="mr-1 h-3 w-3" />
+                          )}
+                          {movement.type === 'DEPOSIT' ? 'Depósito' : 'Retiro'}
+                        </Badge>
+                        {fromFunding && (
+                          <Badge variant="secondary">
+                            <TrendingUp className="mr-1 h-3 w-3" />
+                            Desde efectivo
+                          </Badge>
                         )}
-                        {movement.type === 'DEPOSIT' ? 'Depósito' : 'Retiro'}
-                      </Badge>
+                      </div>
                     </TableCell>
                     <TableCell className="font-semibold">
                       {formatCurrency(movement.amount)}
@@ -199,17 +229,20 @@ export function MovementsPage() {
                       {movement.description || '-'}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteMovement.mutate(movement.id)}
-                        disabled={deleteMovement.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {!fromFunding && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteMovement.mutate(movement.id)}
+                          disabled={deleteMovement.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           )}

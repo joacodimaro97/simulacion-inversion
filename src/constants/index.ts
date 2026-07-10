@@ -11,6 +11,8 @@ export const ROUTES = {
   CASH_ACCOUNTS: '/cash/accounts',
   CASH_CATEGORIES: '/cash/categories',
   CASH_TRANSACTIONS: '/cash/transactions',
+  CASH_TRANSFERS: '/cash/transfers',
+  CASH_FUNDINGS: '/cash/fundings',
 } as const
 
 export const queryKeys = {
@@ -43,5 +45,9 @@ export const queryKeys = {
     categoryTree: (type?: string) => ['cash', 'categories', 'tree', type] as const,
     transactions: (filters?: unknown) => ['cash', 'transactions', filters] as const,
     summary: (filters?: unknown) => ['cash', 'summary', filters] as const,
+    transfers: (filters?: unknown) => ['cash', 'transfers', filters] as const,
+  },
+  fundings: {
+    all: (filters?: unknown) => ['fundings', filters] as const,
   },
 } as const

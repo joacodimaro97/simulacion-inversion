@@ -5,6 +5,7 @@ import { AccountProvider } from '@/contexts/AccountContext'
 import { ToastProvider, useToast } from '@/contexts/ToastContext'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
+import { GuestRoute } from '@/components/layout/GuestRoute'
 import { Toaster } from '@/components/ui/toaster'
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -16,6 +17,8 @@ import { CashDashboardPage } from '@/pages/cash/CashDashboardPage'
 import { CashAccountsPage } from '@/pages/cash/CashAccountsPage'
 import { CashCategoriesPage } from '@/pages/cash/CashCategoriesPage'
 import { CashTransactionsPage } from '@/pages/cash/CashTransactionsPage'
+import { CashTransfersPage } from '@/pages/cash/CashTransfersPage'
+import { CashFundingsPage } from '@/pages/cash/CashFundingsPage'
 import { ROUTES } from '@/constants'
 import { useTheme } from '@/hooks/useTheme'
 
@@ -37,7 +40,9 @@ function AppRoutes() {
   return (
     <>
       <Routes>
-        <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        <Route element={<GuestRoute />}>
+          <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        </Route>
         <Route element={<ProtectedRoute />}>
           <Route
             element={
@@ -55,6 +60,8 @@ function AppRoutes() {
             <Route path={ROUTES.CASH_ACCOUNTS} element={<CashAccountsPage />} />
             <Route path={ROUTES.CASH_CATEGORIES} element={<CashCategoriesPage />} />
             <Route path={ROUTES.CASH_TRANSACTIONS} element={<CashTransactionsPage />} />
+            <Route path={ROUTES.CASH_TRANSFERS} element={<CashTransfersPage />} />
+            <Route path={ROUTES.CASH_FUNDINGS} element={<CashFundingsPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to={ROUTES.CASH} replace />} />

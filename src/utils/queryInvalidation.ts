@@ -23,6 +23,22 @@ export function invalidateCashTransactions(queryClient: QueryClient) {
   ])
 }
 
+export function invalidateCashTransfers(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['cash', 'transfers'], ...REFETCH_ALL }),
+    invalidateCashTransactions(queryClient),
+  ])
+}
+
+export function invalidateFundings(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['fundings'], ...REFETCH_ALL }),
+    invalidateCashTransactions(queryClient),
+    invalidateMovements(queryClient),
+    invalidateFciAccounts(queryClient),
+  ])
+}
+
 export function invalidateCashAll(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ queryKey: ['cash'], ...REFETCH_ALL })
 }

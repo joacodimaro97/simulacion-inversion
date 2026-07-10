@@ -78,6 +78,7 @@ export interface Movement {
   amount: number
   date: string
   description: string | null
+  fundingId: string | null
   createdAt: string
 }
 

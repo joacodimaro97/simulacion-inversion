@@ -71,6 +71,8 @@ export interface CashTransaction {
   amount: number
   date: string
   description: string | null
+  transferId: string | null
+  fundingId: string | null
   createdAt: string
 }
 
@@ -96,6 +98,88 @@ export interface CashTransactionQuery {
   cashAccountId?: string
   categoryId?: string
   type?: CashTransactionType
+  startDate?: string
+  endDate?: string
+  excludeTransfers?: boolean
+  excludeFundings?: boolean
+}
+
+export type FundingType = 'CASH_TO_INVESTMENT' | 'INVESTMENT_TO_CASH'
+
+export interface CashTransferAccountRef {
+  id: string
+  name: string
+  currency: string
+}
+
+export interface CashTransfer {
+  id: string
+  userId: string
+  fromCashAccountId: string
+  toCashAccountId: string
+  amount: number
+  date: string
+  description: string | null
+  createdAt: string
+  fromAccount: CashTransferAccountRef
+  toAccount: CashTransferAccountRef
+  outTransactionId: string
+  inTransactionId: string
+}
+
+export interface CreateCashTransferInput {
+  fromCashAccountId: string
+  toCashAccountId: string
+  amount: number
+  date: string
+  description?: string
+}
+
+export interface CashTransferQuery {
+  cashAccountId?: string
+  startDate?: string
+  endDate?: string
+}
+
+export interface FundingAccountRef {
+  id: string
+  name: string
+  currency: string
+}
+
+export interface FundingInvestmentAccountRef extends FundingAccountRef {
+  investmentType: string
+}
+
+export interface AccountFunding {
+  id: string
+  userId: string
+  type: FundingType
+  cashAccountId: string
+  investmentAccountId: string
+  amount: number
+  date: string
+  description: string | null
+  createdAt: string
+  cashAccount: FundingAccountRef
+  investmentAccount: FundingInvestmentAccountRef
+  cashTransactionId: string
+  investmentMovementId: string
+}
+
+export interface CreateFundingInput {
+  type: FundingType
+  cashAccountId: string
+  investmentAccountId: string
+  amount: number
+  date: string
+  description?: string
+}
+
+export interface FundingQuery {
+  cashAccountId?: string
+  investmentAccountId?: string
+  type?: FundingType
   startDate?: string
   endDate?: string
 }

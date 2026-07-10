@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, ArrowLeftRight, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 import {
   useCashAccounts,
   useCreateCashAccount,
   useUpdateCashAccount,
   useDeleteCashAccount,
 } from '@/hooks/useCashAccounts'
+import { useAccountSummaries } from '@/hooks/useAccountSummaries'
+import { TransferModal } from '@/components/cash/TransferModal'
+import { FundingModal } from '@/components/cash/FundingModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,10 +23,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { PageHeaderSkeleton, TableSkeleton } from '@/components/ui/skeleton'
+import { PageHeaderSkeleton, TableSkeleton, Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/utils/format'
 import { cn } from '@/utils/cn'
-import type { CashAccount } from '@/types/cash'
+import type { CashAccount, FundingType } from '@/types/cash'
 
 interface AccountForm {
   name: string
@@ -41,11 +44,36 @@ const emptyForm: AccountForm = {
 
 export function CashAccountsPage() {
   const { data: accounts = [], isLoading } = useCashAccounts()
+  const accountIds = accounts.map((a) => a.id)
+  const accountSummaryQueries = useAccountSummaries(accountIds)
   const createAccount = useCreateCashAccount()
   const updateAccount = useUpdateCashAccount()
   const deleteAccount = useDeleteCashAccount()
   const [editing, setEditing] = useState<CashAccount | null>(null)
   const [mobileFormOpen, setMobileFormOpen] = useState(false)
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [fundingOpen, setFundingOpen] = useState(false)
+  const [fundingType, setFundingType] = useState<FundingType>('CASH_TO_INVESTMENT')
+  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>()
+
+  const getBalance = (accountId: string) => {
+    const idx = accountIds.indexOf(accountId)
+    return {
+      balance: accountSummaryQueries[idx]?.data?.balance ?? 0,
+      loading: accountSummaryQueries[idx]?.isLoading ?? true,
+    }
+  }
+
+  const openTransfer = (accountId: string) => {
+    setSelectedAccountId(accountId)
+    setTransferOpen(true)
+  }
+
+  const openFunding = (accountId: string, type: FundingType) => {
+    setSelectedAccountId(accountId)
+    setFundingType(type)
+    setFundingOpen(true)
+  }
 
   const { register, handleSubmit, reset } = useForm<AccountForm>({
     defaultValues: emptyForm,
@@ -112,6 +140,18 @@ export function CashAccountsPage() {
 
   return (
     <div className="space-y-6 animate-in md:space-y-8">
+      <TransferModal
+        open={transferOpen}
+        onClose={() => setTransferOpen(false)}
+        defaultFromAccountId={selectedAccountId}
+      />
+      <FundingModal
+        open={fundingOpen}
+        onClose={() => setFundingOpen(false)}
+        defaultType={fundingType}
+        defaultCashAccountId={selectedAccountId}
+      />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Cuentas de efectivo</h1>
@@ -209,7 +249,9 @@ export function CashAccountsPage() {
           ) : (
             <>
               <div className="space-y-3 md:hidden">
-                {accounts.map((account) => (
+                {accounts.map((account) => {
+                  const { balance, loading } = getBalance(account.id)
+                  return (
                   <div key={account.id} className="rounded-lg border bg-card p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -219,11 +261,34 @@ export function CashAccountsPage() {
                         )}
                         <p className="mt-1 text-xs text-muted-foreground">{account.currency}</p>
                       </div>
-                      <p className="shrink-0 text-sm font-semibold">
-                        {formatCurrency(account.openingBalance ?? 0)}
-                      </p>
+                      <div className="shrink-0 text-right">
+                        {loading ? (
+                          <Skeleton className="ml-auto h-5 w-20" />
+                        ) : (
+                          <p className={cn('text-sm font-semibold', balance >= 0 ? '' : 'text-destructive')}>
+                            {formatCurrency(balance)}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground">
+                          Inicial: {formatCurrency(account.openingBalance ?? 0)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="mt-3 flex gap-2 border-t pt-3">
+                    <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
+                      <Button variant="outline" size="sm" type="button" onClick={() => openTransfer(account.id)}>
+                        <ArrowLeftRight className="h-4 w-4" />
+                        Transferir
+                      </Button>
+                      <Button variant="outline" size="sm" type="button" onClick={() => openFunding(account.id, 'CASH_TO_INVESTMENT')}>
+                        <ArrowUpRight className="h-4 w-4" />
+                        A inversión
+                      </Button>
+                      <Button variant="outline" size="sm" type="button" onClick={() => openFunding(account.id, 'INVESTMENT_TO_CASH')}>
+                        <ArrowDownLeft className="h-4 w-4" />
+                        Retirar
+                      </Button>
+                    </div>
+                    <div className="mt-2 flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -247,7 +312,8 @@ export function CashAccountsPage() {
                       </Button>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             <Table className="hidden md:table">
               <TableHeader>
@@ -256,11 +322,14 @@ export function CashAccountsPage() {
                   <TableHead>Descripción</TableHead>
                   <TableHead>Moneda</TableHead>
                   <TableHead>Saldo inicial</TableHead>
-                  <TableHead className="w-24" />
+                  <TableHead>Balance</TableHead>
+                  <TableHead className="w-48" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accounts.map((account) => (
+                {accounts.map((account) => {
+                  const { balance, loading } = getBalance(account.id)
+                  return (
                   <TableRow key={account.id}>
                     <TableCell className="font-medium">{account.name}</TableCell>
                     <TableCell className="text-muted-foreground">
@@ -269,7 +338,25 @@ export function CashAccountsPage() {
                     <TableCell>{account.currency}</TableCell>
                     <TableCell>{formatCurrency(account.openingBalance ?? 0)}</TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
+                      {loading ? (
+                        <Skeleton className="h-5 w-20" />
+                      ) : (
+                        <span className={cn('font-semibold', balance >= 0 ? '' : 'text-destructive')}>
+                          {formatCurrency(balance)}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        <Button variant="ghost" size="icon" type="button" title="Transferir" onClick={() => openTransfer(account.id)}>
+                          <ArrowLeftRight className="h-4 w-4 text-slate-500" />
+                        </Button>
+                        <Button variant="ghost" size="icon" type="button" title="Depositar a inversión" onClick={() => openFunding(account.id, 'CASH_TO_INVESTMENT')}>
+                          <ArrowUpRight className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" type="button" title="Retirar de inversión" onClick={() => openFunding(account.id, 'INVESTMENT_TO_CASH')}>
+                          <ArrowDownLeft className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -290,7 +377,8 @@ export function CashAccountsPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
             </>

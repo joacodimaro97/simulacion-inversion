@@ -10,6 +10,7 @@ import {
   Tags,
   Receipt,
   PiggyBank,
+  TrendingUp,
   LogOut,
   ChevronDown,
   Menu,
@@ -30,6 +31,8 @@ const investmentItems = [
 const cashItems = [
   { to: ROUTES.CASH, label: 'Resumen', icon: Wallet },
   { to: ROUTES.CASH_TRANSACTIONS, label: 'Transacciones', icon: Receipt },
+  { to: ROUTES.CASH_TRANSFERS, label: 'Transferencias', icon: ArrowLeftRight },
+  { to: ROUTES.CASH_FUNDINGS, label: 'Efectivo ↔ Inv.', icon: TrendingUp },
   { to: ROUTES.CASH_CATEGORIES, label: 'Categorías', icon: Tags },
   { to: ROUTES.CASH_ACCOUNTS, label: 'Cuentas', icon: PiggyBank },
 ]
@@ -37,8 +40,8 @@ const cashItems = [
 const mobileItems = [
   { to: ROUTES.CASH, label: 'Resumen', icon: Wallet },
   { to: ROUTES.CASH_TRANSACTIONS, label: 'Movimientos', icon: Receipt },
-  { to: ROUTES.CASH_CATEGORIES, label: 'Categorías', icon: Tags },
-  { to: ROUTES.CASH_ACCOUNTS, label: 'Cuentas', icon: PiggyBank },
+  { to: ROUTES.CASH_TRANSFERS, label: 'Transfer.', icon: ArrowLeftRight },
+  { to: ROUTES.CASH_FUNDINGS, label: 'Inv.', icon: TrendingUp },
 ] as const
 
 function isInvestmentPath(pathname: string) {
@@ -234,6 +237,31 @@ export function MobileNav() {
         description="Inversiones y otras secciones"
       >
         <div className="space-y-6">
+          <div className="space-y-1">
+            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Gastos e ingresos
+            </p>
+            {cashItems
+              .filter((item) => !mobileItems.some((m) => m.to === item.to))
+              .map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={() => setMoreOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-foreground hover:bg-muted',
+                    )
+                  }
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {label}
+                </NavLink>
+              ))}
+          </div>
           <div className="space-y-1">
             <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Inversiones

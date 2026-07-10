@@ -8,18 +8,27 @@ import {
   type ReactNode,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { setStoredToken, clearStoredToken, setUnauthorizedHandler } from '@/api/http'
-import { ROUTES, AUTH_TOKEN_KEY } from '@/constants'
+import {
+  getStoredToken,
+  setStoredToken,
+  clearStoredToken,
+  setUnauthorizedHandler,
+  getApiError,
+} from '@/api/http'
+import { ROUTES } from '@/constants'
 import type { User } from '@/types/api'
 import { AuthService } from '@/services/AuthService'
+import { restoreSession } from '@/utils/sessionRestore'
 
 interface AuthContextValue {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
+  sessionError: string | null
   login: (email: string, password: string) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
+  retrySession: () => Promise<void>
   setUser: (user: User | null) => void
 }
 
@@ -29,48 +38,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [sessionError, setSessionError] = useState<string | null>(null)
 
   const logout = useCallback(() => {
     clearStoredToken()
     setUser(null)
-    navigate(ROUTES.LOGIN)
+    setSessionError(null)
+    navigate(ROUTES.LOGIN, { replace: true })
   }, [navigate])
 
-  useEffect(() => {
-    setUnauthorizedHandler(() => {
-      setUser(null)
-      navigate(ROUTES.LOGIN)
-    })
-  }, [navigate])
-
-  useEffect(() => {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY)
+  const bootstrapSession = useCallback(async () => {
+    const token = getStoredToken()
     if (!token) {
+      setUser(null)
+      setSessionError(null)
       setIsLoading(false)
       return
     }
 
-    AuthService.getMe()
-      .then(setUser)
-      .catch(() => {
+    setIsLoading(true)
+    setSessionError(null)
+
+    try {
+      const me = await restoreSession()
+      setUser(me)
+    } catch (error) {
+      const apiError = getApiError(error)
+      if (apiError.statusCode === 401) {
         clearStoredToken()
         setUser(null)
-      })
-      .finally(() => setIsLoading(false))
+        setSessionError(null)
+      } else {
+        setUser(null)
+        setSessionError(apiError.message)
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null)
+      setSessionError(null)
+      navigate(ROUTES.LOGIN, { replace: true })
+    })
+  }, [navigate])
+
+  useEffect(() => {
+    void bootstrapSession()
+  }, [bootstrapSession])
 
   const login = async (email: string, password: string) => {
     const { user: loggedUser, token } = await AuthService.login({ email, password })
     setStoredToken(token)
     setUser(loggedUser)
-    navigate(ROUTES.CASH)
+    setSessionError(null)
+    navigate(ROUTES.CASH, { replace: true })
   }
 
   const register = async (name: string, email: string, password: string) => {
     const { user: registeredUser, token } = await AuthService.register({ name, email, password })
     setStoredToken(token)
     setUser(registeredUser)
-    navigate(ROUTES.CASH)
+    setSessionError(null)
+    navigate(ROUTES.CASH, { replace: true })
   }
 
   const value = useMemo(
@@ -78,12 +110,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isAuthenticated: !!user,
       isLoading,
+      sessionError,
       login,
       register,
       logout,
+      retrySession: bootstrapSession,
       setUser,
     }),
-    [user, isLoading, logout],
+    [user, isLoading, sessionError, logout, bootstrapSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

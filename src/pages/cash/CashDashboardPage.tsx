@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDownLeft, ArrowUpRight, Wallet, Scale, Landmark, Plus } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Wallet, Scale, Landmark, Plus, ArrowLeftRight } from 'lucide-react'
 import { useCashAccounts } from '@/hooks/useCashAccounts'
 import { useCashSummary } from '@/hooks/useCashSummary'
 import { useCashTransactions } from '@/hooks/useCashTransactions'
@@ -8,6 +8,8 @@ import { useCashCategories } from '@/hooks/useCashCategories'
 import { useAccountSummaries } from '@/hooks/useAccountSummaries'
 import { AccountsSummary } from '@/components/cash/AccountsSummary'
 import { QuickTransactionModal } from '@/components/cash/QuickTransactionModal'
+import { TransferModal } from '@/components/cash/TransferModal'
+import { FundingModal } from '@/components/cash/FundingModal'
 import { CashPeriodFilters } from '@/components/cash/CashPeriodFilters'
 import { Button } from '@/components/ui/button'
 import { MetricCard } from '@/components/common/MetricCard'
@@ -38,6 +40,8 @@ export function CashDashboardPage() {
   const [cashAccountId, setCashAccountId] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [modalType, setModalType] = useState<CashTransactionType>('EXPENSE')
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [fundingOpen, setFundingOpen] = useState(false)
 
   const openQuickAdd = (type: CashTransactionType) => {
     setModalType(type)
@@ -57,7 +61,7 @@ export function CashDashboardPage() {
     () => ({
       startDate: `${year}-${String(month).padStart(2, '0')}-01`,
       endDate: `${year}-${String(month).padStart(2, '0')}-31`,
-      ...(cashAccountId ? { cashAccountId } : {}),
+      ...(cashAccountId ? { cashAccountId } : { excludeTransfers: true, excludeFundings: true }),
     }),
     [year, month, cashAccountId],
   )
@@ -138,6 +142,22 @@ export function CashDashboardPage() {
             <Plus className="mr-1 h-4 w-4" />
             Ingreso
           </Button>
+          <Button
+            variant="outline"
+            className="flex-1 sm:flex-none"
+            onClick={() => setTransferOpen(true)}
+          >
+            <ArrowLeftRight className="mr-1 h-4 w-4" />
+            Transferir
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 sm:flex-none"
+            onClick={() => setFundingOpen(true)}
+          >
+            <ArrowUpRight className="mr-1 h-4 w-4" />
+            A inversión
+          </Button>
           <Link
             to={ROUTES.CASH_TRANSACTIONS}
             className="inline-flex h-10 w-full items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground sm:h-8 sm:w-auto sm:text-xs"
@@ -154,6 +174,15 @@ export function CashDashboardPage() {
         onClose={() => setModalOpen(false)}
         defaultType={modalType}
         defaultAccountId={cashAccountId || undefined}
+      />
+      <TransferModal
+        open={transferOpen}
+        onClose={() => setTransferOpen(false)}
+        defaultFromAccountId={cashAccountId || undefined}
+      />
+      <FundingModal
+        open={fundingOpen}
+        onClose={() => setFundingOpen(false)}
       />
 
       <div className="space-y-6">
@@ -275,6 +304,8 @@ export function CashDashboardPage() {
             <div className="space-y-3">
               {recent.map((tx) => {
                 const category = categories.find((c) => c.id === tx.categoryId)
+                const isTransfer = Boolean(tx.transferId)
+                const isFunding = Boolean(tx.fundingId)
                 return (
                   <div
                     key={tx.id}
@@ -292,16 +323,26 @@ export function CashDashboardPage() {
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-2 sm:justify-end">
-                      <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
-                        {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
-                      </Badge>
+                      {isTransfer ? (
+                        <Badge variant="slate">Transferencia</Badge>
+                      ) : isFunding ? (
+                        <Badge variant="secondary">Efectivo ↔ Inv.</Badge>
+                      ) : (
+                        <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
+                          {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
+                        </Badge>
+                      )}
                       <span
                         className={cn(
                           'text-sm font-semibold',
-                          tx.type === 'INCOME' ? 'text-success' : 'text-destructive',
+                          isTransfer
+                            ? 'text-slate-600'
+                            : tx.type === 'INCOME'
+                              ? 'text-success'
+                              : 'text-destructive',
                         )}
                       >
-                        {tx.type === 'INCOME' ? '+' : '-'}
+                        {!isTransfer && (tx.type === 'INCOME' ? '+' : '-')}
                         {formatCurrency(tx.amount)}
                       </span>
                     </div>

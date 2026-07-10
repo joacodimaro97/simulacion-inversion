@@ -11,6 +11,7 @@ export interface TransactionFilters {
   type: '' | CashTransactionType
   startDate: string
   endDate: string
+  hideSystemMovements: boolean
 }
 
 interface CashTransactionFiltersProps {
@@ -127,6 +128,16 @@ export function CashTransactionFilters({
         onChange={(e) => onChange({ endDate: e.target.value })}
         className={`${dateClass} col-span-1`}
       />
+
+      <label className="col-span-2 flex min-h-10 cursor-pointer items-center gap-2 rounded-md border bg-background px-3 text-sm sm:col-span-1 sm:min-h-8">
+        <input
+          type="checkbox"
+          checked={filters.hideSystemMovements}
+          onChange={(e) => onChange({ hideSystemMovements: e.target.checked })}
+          className="h-4 w-4 rounded border-input"
+        />
+        <span className="text-muted-foreground">Ocultar transfer. y fundings</span>
+      </label>
       </div>
     </div>
   )
