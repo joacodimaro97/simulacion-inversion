@@ -19,6 +19,30 @@ export function formatCurrencyPrecise(value: number, decimals = 2): string {
   }).format(value)
 }
 
+/** Formatea un monto según la moneda de la cuenta (ARS por defecto). */
+export function formatCurrencyFor(
+  value: number,
+  currency: string | null | undefined = 'ARS',
+  decimals = 0,
+): string {
+  const code = currency || 'ARS'
+  try {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: code,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(value)
+  } catch {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(value)
+  }
+}
+
 export function formatPercent(value: number, decimals = 2): string {
   const sign = value > 0 ? '+' : ''
   return `${sign}${value.toFixed(decimals)}%`

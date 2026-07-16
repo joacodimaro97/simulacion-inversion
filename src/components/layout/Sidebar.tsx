@@ -11,6 +11,7 @@ import {
   Receipt,
   PiggyBank,
   TrendingUp,
+  Target,
   LogOut,
   ChevronDown,
   Menu,
@@ -31,6 +32,7 @@ const investmentItems = [
 const cashItems = [
   { to: ROUTES.CASH, label: 'Resumen', icon: Wallet },
   { to: ROUTES.CASH_TRANSACTIONS, label: 'Transacciones', icon: Receipt },
+  { to: ROUTES.CASH_BUDGETS, label: 'Presupuestos', icon: Target },
   { to: ROUTES.CASH_TRANSFERS, label: 'Transferencias', icon: ArrowLeftRight },
   { to: ROUTES.CASH_FUNDINGS, label: 'Efectivo ↔ Inv.', icon: TrendingUp },
   { to: ROUTES.CASH_CATEGORIES, label: 'Categorías', icon: Tags },

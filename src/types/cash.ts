@@ -216,3 +216,75 @@ export interface CashSummary {
   byCategory: CashSummaryByCategory[]
   byParentCategory: CashSummaryByParentCategory[]
 }
+
+export type BudgetStatus =
+  | 'NOT_STARTED'
+  | 'ON_TRACK'
+  | 'UNDER_BUDGET'
+  | 'OVER_BUDGET'
+  | 'COMPLETED'
+
+export interface BudgetAnalysis {
+  totalDays: number
+  daysElapsed: number
+  daysRemaining: number
+  dailyAllowance: number
+  spent: number
+  remaining: number
+  expectedToDate: number
+  difference: number
+  suggestedDailyRemaining: number
+  averageDailySpent: number
+  projectedTotal: number
+  percentUsed: number
+  overspent: boolean
+  status: BudgetStatus
+}
+
+export interface BudgetCashAccountRef {
+  id: string
+  name: string
+  currency: string
+}
+
+export interface BudgetCategoryRef {
+  id: string
+  name: string
+  type: CashTransactionType
+  color: string | null
+  parentId: string | null
+}
+
+export interface Budget {
+  id: string
+  userId: string
+  cashAccountId: string | null
+  name: string
+  amount: number
+  startDate: string
+  endDate: string
+  categoryIds: string[]
+  createdAt: string
+  updatedAt: string
+  cashAccount: BudgetCashAccountRef | null
+  categories: BudgetCategoryRef[]
+  analysis: BudgetAnalysis
+}
+
+export interface CreateBudgetInput {
+  name: string
+  endDate: string
+  startDate?: string
+  amount?: number
+  cashAccountId?: string | null
+  categoryIds?: string[]
+}
+
+export interface UpdateBudgetInput {
+  name?: string
+  amount?: number
+  startDate?: string
+  endDate?: string
+  cashAccountId?: string | null
+  categoryIds?: string[]
+}

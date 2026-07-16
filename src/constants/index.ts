@@ -13,6 +13,7 @@ export const ROUTES = {
   CASH_TRANSACTIONS: '/cash/transactions',
   CASH_TRANSFERS: '/cash/transfers',
   CASH_FUNDINGS: '/cash/fundings',
+  CASH_BUDGETS: '/cash/budgets',
 } as const
 
 export const queryKeys = {
@@ -46,6 +47,8 @@ export const queryKeys = {
     transactions: (filters?: unknown) => ['cash', 'transactions', filters] as const,
     summary: (filters?: unknown) => ['cash', 'summary', filters] as const,
     transfers: (filters?: unknown) => ['cash', 'transfers', filters] as const,
+    budgets: ['cash', 'budgets'] as const,
+    budget: (id: string) => ['cash', 'budgets', id] as const,
   },
   fundings: {
     all: (filters?: unknown) => ['fundings', filters] as const,

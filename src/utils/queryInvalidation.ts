@@ -6,6 +6,7 @@ export function invalidateCashAccounts(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ['cash', 'accounts'], ...REFETCH_ALL }),
     queryClient.invalidateQueries({ queryKey: ['cash', 'summary'], ...REFETCH_ALL }),
+    queryClient.invalidateQueries({ queryKey: ['cash', 'budgets'], ...REFETCH_ALL }),
   ])
 }
 
@@ -16,10 +17,15 @@ export function invalidateCashCategories(queryClient: QueryClient) {
   ])
 }
 
+export function invalidateCashBudgets(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ queryKey: ['cash', 'budgets'], ...REFETCH_ALL })
+}
+
 export function invalidateCashTransactions(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ['cash', 'transactions'], ...REFETCH_ALL }),
     queryClient.invalidateQueries({ queryKey: ['cash', 'summary'], ...REFETCH_ALL }),
+    invalidateCashBudgets(queryClient),
   ])
 }
 

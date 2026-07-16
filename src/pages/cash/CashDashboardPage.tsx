@@ -7,6 +7,7 @@ import { useCashTransactions } from '@/hooks/useCashTransactions'
 import { useCashCategories } from '@/hooks/useCashCategories'
 import { useAccountSummaries } from '@/hooks/useAccountSummaries'
 import { AccountsSummary } from '@/components/cash/AccountsSummary'
+import { BudgetsOverview } from '@/components/cash/BudgetsOverview'
 import { QuickTransactionModal } from '@/components/cash/QuickTransactionModal'
 import { TransferModal } from '@/components/cash/TransferModal'
 import { FundingModal } from '@/components/cash/FundingModal'
@@ -168,6 +169,8 @@ export function CashDashboardPage() {
       </div>
 
       <AccountsSummary items={accountBalances} />
+
+      <BudgetsOverview />
 
       <QuickTransactionModal
         open={modalOpen}

@@ -19,6 +19,7 @@ import { CashCategoriesPage } from '@/pages/cash/CashCategoriesPage'
 import { CashTransactionsPage } from '@/pages/cash/CashTransactionsPage'
 import { CashTransfersPage } from '@/pages/cash/CashTransfersPage'
 import { CashFundingsPage } from '@/pages/cash/CashFundingsPage'
+import { CashBudgetsPage } from '@/pages/cash/CashBudgetsPage'
 import { ROUTES } from '@/constants'
 import { useTheme } from '@/hooks/useTheme'
 
@@ -62,6 +63,7 @@ function AppRoutes() {
             <Route path={ROUTES.CASH_TRANSACTIONS} element={<CashTransactionsPage />} />
             <Route path={ROUTES.CASH_TRANSFERS} element={<CashTransfersPage />} />
             <Route path={ROUTES.CASH_FUNDINGS} element={<CashFundingsPage />} />
+            <Route path={ROUTES.CASH_BUDGETS} element={<CashBudgetsPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to={ROUTES.CASH} replace />} />
