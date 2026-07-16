@@ -43,7 +43,7 @@ export function BudgetModal({ open, onClose, budget }: BudgetModalProps) {
   const [mode, setMode] = useState<BudgetKind>('account')
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
 
-  const { register, handleSubmit, reset, watch } = useForm<BudgetForm>({
+  const { register, handleSubmit, reset, watch, setValue } = useForm<BudgetForm>({
     defaultValues: {
       cashAccountId: '',
       name: '',
@@ -72,18 +72,37 @@ export function BudgetModal({ open, onClose, budget }: BudgetModalProps) {
         startDate: budget.startDate.slice(0, 10),
         endDate: budget.endDate.slice(0, 10),
       })
-    } else {
-      setMode('account')
-      setSelectedCategoryIds([])
-      reset({
-        cashAccountId: accounts[0]?.id ?? '',
-        name: '',
-        amount: '',
-        startDate: todayISO(),
-        endDate: '',
-      })
+      return
     }
-  }, [open, budget, accounts, reset])
+
+    setMode('account')
+    setSelectedCategoryIds([])
+    reset({
+      cashAccountId: '',
+      name: '',
+      amount: '',
+      startDate: todayISO(),
+      endDate: '',
+    })
+  }, [open, budget, reset])
+
+  useEffect(() => {
+    if (!open || budget || mode !== 'account' || accounts.length === 0) return
+    if (!cashAccountId) {
+      setValue('cashAccountId', accounts[0]!.id)
+    }
+  }, [open, budget, mode, accounts, cashAccountId, setValue])
+
+  const handleModeChange = (nextMode: BudgetKind) => {
+    setMode(nextMode)
+    if (nextMode === 'category') {
+      setValue('cashAccountId', '')
+      return
+    }
+    if (!cashAccountId && accounts[0]) {
+      setValue('cashAccountId', accounts[0].id)
+    }
+  }
 
   const accountIdForBalance =
     mode === 'account' ? cashAccountId : cashAccountId || ''
@@ -191,7 +210,7 @@ export function BudgetModal({ open, onClose, budget }: BudgetModalProps) {
           <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
             Cerrar
           </Button>
-          <Button type="button" className="flex-1" onClick={() => setMode('category')}>
+          <Button type="button" className="flex-1" onClick={() => handleModeChange('category')}>
             Por categoría
           </Button>
         </div>
@@ -213,7 +232,7 @@ export function BudgetModal({ open, onClose, budget }: BudgetModalProps) {
         {!isEditing && (
           <Tabs
             value={mode}
-            onValueChange={(v) => setMode(v as BudgetKind)}
+            onValueChange={(v) => handleModeChange(v as BudgetKind)}
           >
             <TabsList className="w-full">
               <TabsTrigger value="account" className="flex-1">
@@ -354,7 +373,10 @@ export function BudgetModal({ open, onClose, budget }: BudgetModalProps) {
 
             <div className="space-y-2">
               <Label>Cuenta (opcional)</Label>
-              <Select {...register('cashAccountId')}>
+              <Select
+                value={cashAccountId}
+                onChange={(e) => setValue('cashAccountId', e.target.value, { shouldDirty: true })}
+              >
                 <option value="">Todas las cuentas</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>

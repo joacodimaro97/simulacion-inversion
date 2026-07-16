@@ -6,7 +6,7 @@ export function formatCurrency(value: number): string {
     style: 'currency',
     currency: 'ARS',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(value)
 }
 
@@ -23,22 +23,24 @@ export function formatCurrencyPrecise(value: number, decimals = 2): string {
 export function formatCurrencyFor(
   value: number,
   currency: string | null | undefined = 'ARS',
-  decimals = 0,
+  decimals?: number,
 ): string {
   const code = currency || 'ARS'
+  const fractionDigits =
+    decimals === undefined
+      ? { minimumFractionDigits: 0, maximumFractionDigits: 2 }
+      : { minimumFractionDigits: decimals, maximumFractionDigits: decimals }
   try {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: code,
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
+      ...fractionDigits,
     }).format(value)
   } catch {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
+      ...fractionDigits,
     }).format(value)
   }
 }

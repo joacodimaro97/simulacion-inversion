@@ -9,10 +9,19 @@ interface DialogProps {
   title: string
   description?: string
   children: ReactNode
+  footer?: ReactNode
   className?: string
 }
 
-export function Dialog({ open, onClose, title, description, children, className }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  description,
+  children,
+  footer,
+  className,
+}: DialogProps) {
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -62,9 +71,14 @@ export function Dialog({ open, onClose, title, description, children, className 
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5 sm:pb-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
           {children}
         </div>
+        {footer && (
+          <div className="shrink-0 border-t bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5 sm:pb-5">
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body,

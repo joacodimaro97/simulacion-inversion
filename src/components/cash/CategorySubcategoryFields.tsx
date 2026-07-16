@@ -37,25 +37,27 @@ export function CategorySubcategoryFields({
 
   useEffect(() => {
     const parentValid = parentCategories.some((c) => c.id === parentCategoryId)
+    let effectiveParentId = parentCategoryId
+
     if (!parentValid) {
-      const first = parentCategories[0]?.id ?? ''
-      if (first !== parentCategoryId) onParentChange(first)
+      effectiveParentId = parentCategories[0]?.id ?? ''
+      if (effectiveParentId !== parentCategoryId) onParentChange(effectiveParentId)
+      if (!effectiveParentId) return
+    }
+
+    const subs = getSubcategories(categories, effectiveParentId)
+    if (subs.length === 0) {
       if (subcategoryId) onSubcategoryChange('')
       return
     }
 
-    if (!hasSubcategories) {
-      if (subcategoryId) onSubcategoryChange('')
-      return
-    }
-
-    const subValid = subcategories.some((c) => c.id === subcategoryId)
+    const subValid = subs.some((c) => c.id === subcategoryId)
     if (!subValid) {
-      onSubcategoryChange(subcategories[0]!.id)
+      onSubcategoryChange(subs[0]!.id)
     }
     // Callbacks omitted intentionally — only sync when selection data changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parentCategories, parentCategoryId, subcategories, subcategoryId, hasSubcategories])
+  }, [parentCategories, parentCategoryId, categories, subcategoryId])
 
   const handleParentChange = (nextParentId: string) => {
     onParentChange(nextParentId)

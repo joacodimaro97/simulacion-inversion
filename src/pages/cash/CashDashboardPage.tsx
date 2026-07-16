@@ -22,7 +22,7 @@ import { CashBreakdownPieChart } from '@/charts/CashBreakdownPieChart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { MetricCardSkeleton, ChartSkeleton, PageHeaderSkeleton } from '@/components/ui/skeleton'
-import { formatCurrency, formatDate } from '@/utils/format'
+import { formatCurrency, formatCurrencyFor, formatDate } from '@/utils/format'
 import { formatCategoryLabel } from '@/utils/cashCategories'
 import { ROUTES } from '@/constants'
 import { cn } from '@/utils/cn'
@@ -70,6 +70,7 @@ export function CashDashboardPage() {
   const { data: accounts = [], isLoading: accountsLoading } = useCashAccounts()
   const accountIds = useMemo(() => accounts.map((a) => a.id), [accounts])
   const accountSummaryQueries = useAccountSummaries(accountIds)
+  const accountPeriodSummaryQueries = useAccountSummaries(accountIds, summaryFilters)
   const accountBalances = useMemo(
     () =>
       accounts.map((account, i) => ({
@@ -78,6 +79,24 @@ export function CashDashboardPage() {
         loading: accountSummaryQueries[i]?.isLoading ?? true,
       })),
     [accounts, accountSummaryQueries],
+  )
+  const accountOpeningBalances = useMemo(
+    () =>
+      accounts.map((account, i) => ({
+        account,
+        openingBalance: accountPeriodSummaryQueries[i]?.data?.openingBalance ?? 0,
+        loading: accountPeriodSummaryQueries[i]?.isLoading ?? true,
+      })),
+    [accounts, accountPeriodSummaryQueries],
+  )
+  const accountPeriodBalances = useMemo(
+    () =>
+      accounts.map((account, i) => ({
+        account,
+        balance: accountPeriodSummaryQueries[i]?.data?.balance ?? 0,
+        loading: accountPeriodSummaryQueries[i]?.isLoading ?? true,
+      })),
+    [accounts, accountPeriodSummaryQueries],
   )
   const { data: summary, isLoading: summaryLoading, isFetching: summaryFetching } =
     useCashSummary(summaryFilters)
@@ -102,6 +121,20 @@ export function CashDashboardPage() {
     () => [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8),
     [transactions],
   )
+
+  const openingBalanceBreakdown = useMemo(() => {
+    const items = cashAccountId
+      ? accountOpeningBalances.filter((item) => item.account.id === cashAccountId)
+      : accountOpeningBalances
+    return items.length > 1 ? items : []
+  }, [accountOpeningBalances, cashAccountId])
+
+  const balanceBreakdown = useMemo(() => {
+    const items = cashAccountId
+      ? accountPeriodBalances.filter((item) => item.account.id === cashAccountId)
+      : accountPeriodBalances
+    return items.length > 1 ? items : []
+  }, [accountPeriodBalances, cashAccountId])
 
   if (accountsLoading) {
     return (
@@ -230,24 +263,69 @@ export function CashDashboardPage() {
                 title="Saldo inicial"
                 value={formatCurrency(summary.openingBalance)}
                 icon={Landmark}
+                subtitle={
+                  <KpiBreakdown
+                    rows={openingBalanceBreakdown.map(({ account, openingBalance, loading }) => ({
+                      key: account.id,
+                      label: account.name,
+                      value: formatCurrencyFor(openingBalance, account.currency),
+                      loading,
+                    }))}
+                  />
+                }
               />
               <MetricCard
                 title="Ingresos"
                 value={formatCurrency(summary.totalIncome)}
                 icon={ArrowDownLeft}
                 trend="up"
+                subtitle={
+                  <KpiBreakdown
+                    rows={[...incomeParents]
+                      .sort((a, b) => b.total - a.total)
+                      .map((item) => ({
+                        key: item.categoryId,
+                        label: item.categoryName,
+                        value: formatCurrency(item.total),
+                        tone: 'success',
+                      }))}
+                  />
+                }
               />
               <MetricCard
                 title="Gastos"
                 value={formatCurrency(summary.totalExpense)}
                 icon={ArrowUpRight}
                 trend="down"
+                subtitle={
+                  <KpiBreakdown
+                    rows={[...expenseParents]
+                      .sort((a, b) => b.total - a.total)
+                      .map((item) => ({
+                        key: item.categoryId,
+                        label: item.categoryName,
+                        value: formatCurrency(item.total),
+                        tone: 'destructive',
+                      }))}
+                  />
+                }
               />
               <MetricCard
                 title="Balance"
                 value={formatCurrency(summary.balance)}
                 icon={Scale}
                 trend={summary.balance >= 0 ? 'up' : 'down'}
+                subtitle={
+                  <KpiBreakdown
+                    rows={balanceBreakdown.map(({ account, balance, loading }) => ({
+                      key: account.id,
+                      label: account.name,
+                      value: formatCurrencyFor(balance, account.currency),
+                      loading,
+                      tone: balance >= 0 ? 'success' : 'destructive',
+                    }))}
+                  />
+                }
               />
             </div>
 
@@ -356,6 +434,39 @@ export function CashDashboardPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+interface KpiBreakdownRow {
+  key: string
+  label: string
+  value: string
+  loading?: boolean
+  tone?: 'default' | 'success' | 'destructive'
+}
+
+function KpiBreakdown({ rows }: { rows: KpiBreakdownRow[] }) {
+  if (rows.length === 0) return null
+  return (
+    <div className="mt-3 space-y-1.5 border-t border-border/60 pt-2.5">
+      {rows.map((row) => (
+        <div
+          key={row.key}
+          className="flex items-baseline justify-between gap-3 text-xs leading-tight"
+        >
+          <span className="min-w-0 truncate text-muted-foreground">{row.label}</span>
+          <span
+            className={cn('shrink-0 font-medium tabular-nums', {
+              'text-success': row.tone === 'success',
+              'text-destructive': row.tone === 'destructive',
+              'text-foreground/80': !row.tone || row.tone === 'default',
+            })}
+          >
+            {row.loading ? '…' : row.value}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }

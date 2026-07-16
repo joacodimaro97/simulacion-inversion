@@ -11,6 +11,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { CategorySubcategoryFields } from '@/components/cash/CategorySubcategoryFields'
 import {
   getCategories,
+  getSubcategories,
   isCategorySelectionValid,
   resolveTransactionCategoryId,
 } from '@/utils/cashCategories'
@@ -74,16 +75,21 @@ export function QuickTransactionModal({
 
   useEffect(() => {
     if (!open) return
+    const parents = getCategories(categories, defaultType)
+    const firstParentId = parents[0]?.id ?? ''
+    const firstSubcategoryId = firstParentId
+      ? (getSubcategories(categories, firstParentId)[0]?.id ?? '')
+      : ''
     reset({
       type: defaultType,
       cashAccountId: defaultAccountId ?? accounts[0]?.id ?? '',
-      parentCategoryId: '',
-      subcategoryId: '',
+      parentCategoryId: firstParentId,
+      subcategoryId: firstSubcategoryId,
       amount: '',
       date: todayISO(),
       description: '',
     })
-  }, [open, defaultType, defaultAccountId, accounts, reset])
+  }, [open, defaultType, defaultAccountId, accounts, categories, reset])
 
   useEffect(() => {
     if (accounts.length > 0 && !watch('cashAccountId')) {
@@ -109,8 +115,27 @@ export function QuickTransactionModal({
       onClose={onClose}
       title="Registrar movimiento"
       description="Cargá un gasto o ingreso en segundos"
+      footer={
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form="quick-transaction-form"
+            className="flex-1"
+            disabled={createTx.isPending || parentCategories.length === 0 || !selectionValid}
+          >
+            {createTx.isPending ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form
+        id="quick-transaction-form"
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-4"
+      >
         <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-1">
           {(['EXPENSE', 'INCOME'] as const).map((t) => (
             <button
@@ -175,19 +200,6 @@ export function QuickTransactionModal({
         <div className="space-y-2">
           <Label>Descripción (opcional)</Label>
           <Input placeholder="Ej: Supermercado" {...register('description')} />
-        </div>
-
-        <div className="flex gap-2 pt-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            className="flex-1"
-            disabled={createTx.isPending || parentCategories.length === 0 || !selectionValid}
-          >
-            {createTx.isPending ? 'Guardando...' : 'Guardar'}
-          </Button>
         </div>
       </form>
     </Dialog>

@@ -31,9 +31,12 @@ import { formatCategoryLabel, isCategorySelectionValid, resolveTransactionCatego
 import { CashTransactionFilters, resolveFilterCategoryId, type TransactionFilters } from '@/components/cash/CashTransactionFilters'
 import { CategorySubcategoryFields } from '@/components/cash/CategorySubcategoryFields'
 import { QuickTransactionModal } from '@/components/cash/QuickTransactionModal'
+import { Pagination } from '@/components/ui/pagination'
 import { cn } from '@/utils/cn'
 import { ROUTES } from '@/constants'
 import type { CashTransaction, CashTransactionType } from '@/types/cash'
+
+const PAGE_SIZE = 10
 
 function isSystemTransaction(tx: CashTransaction) {
   return Boolean(tx.transferId || tx.fundingId)
@@ -85,6 +88,7 @@ export function CashTransactionsPage() {
   })
   const [editing, setEditing] = useState<CashTransaction | null>(null)
   const [quickOpen, setQuickOpen] = useState(false)
+  const [page, setPage] = useState(1)
 
   const queryFilters = useMemo(() => {
     const categoryId = resolveFilterCategoryId(filters)
@@ -141,6 +145,27 @@ export function CashTransactionsPage() {
     () => new Map(accounts.map((a) => [a.id, a.name])),
     [accounts],
   )
+
+  const sortedTransactions = useMemo(
+    () => [...transactions].sort((a, b) => b.date.localeCompare(a.date)),
+    [transactions],
+  )
+
+  const totalPages = Math.max(1, Math.ceil(sortedTransactions.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return sortedTransactions.slice(start, start + PAGE_SIZE)
+  }, [sortedTransactions, currentPage])
+
+  useEffect(() => {
+    setPage(1)
+  }, [queryFilters])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
 
   useEffect(() => {
     if (accounts.length > 0 && !watch('cashAccountId')) {
@@ -339,9 +364,7 @@ export function CashTransactionsPage() {
           ) : (
             <div className={cn('transition-opacity', txFetching && 'opacity-60')}>
               <div className="space-y-3 md:hidden">
-                {[...transactions]
-                  .sort((a, b) => b.date.localeCompare(a.date))
-                  .map((tx) => {
+                {paginatedTransactions.map((tx) => {
                     const category = categoryMap.get(tx.categoryId)
                     return (
                       <div
@@ -432,9 +455,7 @@ export function CashTransactionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {[...transactions]
-                  .sort((a, b) => b.date.localeCompare(a.date))
-                  .map((tx) => (
+                {paginatedTransactions.map((tx) => (
                     <TableRow key={tx.id}>
                       <TableCell>{formatDate(tx.date)}</TableCell>
                       <TableCell>
@@ -500,6 +521,12 @@ export function CashTransactionsPage() {
                   ))}
               </TableBody>
             </Table>
+            <Pagination
+              page={currentPage}
+              pageSize={PAGE_SIZE}
+              totalItems={sortedTransactions.length}
+              onPageChange={setPage}
+            />
             </div>
           )}
         </CardContent>
