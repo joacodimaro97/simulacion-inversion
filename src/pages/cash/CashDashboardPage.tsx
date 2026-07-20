@@ -100,7 +100,8 @@ export function CashDashboardPage() {
   )
   const { data: summary, isLoading: summaryLoading, isFetching: summaryFetching } =
     useCashSummary(summaryFilters)
-  const { data: transactions = [], isLoading: txLoading } = useCashTransactions(txFilters)
+  const { data: txData, isLoading: txLoading } = useCashTransactions(txFilters)
+  const transactions = txData?.items ?? []
   const { data: categories = [] } = useCashCategories()
 
   const selectedAccount = useMemo(

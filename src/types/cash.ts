@@ -97,11 +97,52 @@ export interface UpdateCashTransactionInput {
 export interface CashTransactionQuery {
   cashAccountId?: string
   categoryId?: string
+  categoryIds?: string[]
   type?: CashTransactionType
   startDate?: string
   endDate?: string
   excludeTransfers?: boolean
   excludeFundings?: boolean
+}
+
+export interface CashTransactionWeekStats {
+  weekStart: string
+  weekEnd: string
+  label: string
+  dayCount: number
+  partial: boolean
+  totalExpense: number
+  totalIncome: number
+  expenseCount: number
+  averageDailyExpense: number
+}
+
+export interface CashTransactionWeekHighlight {
+  weekStart: string
+  totalExpense: number
+  averageDailyExpense: number
+}
+
+export interface CashTransactionStats {
+  totalIncome: number
+  totalExpense: number
+  net: number
+  transactionCount: number
+  incomeCount: number
+  expenseCount: number
+  startDate: string | null
+  endDate: string | null
+  totalDays: number
+  averageDailyExpense: number
+  averageDailyIncome: number
+  byWeek: CashTransactionWeekStats[]
+  highestExpenseWeek: CashTransactionWeekHighlight | null
+  lowestExpenseWeek: CashTransactionWeekHighlight | null
+}
+
+export interface CashTransactionListResponse {
+  items: CashTransaction[]
+  stats: CashTransactionStats
 }
 
 export type FundingType = 'CASH_TO_INVESTMENT' | 'INVESTMENT_TO_CASH'

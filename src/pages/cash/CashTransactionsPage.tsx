@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Plus, Pencil, Trash2, ArrowLeftRight, TrendingUp } from 'lucide-react'
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  ArrowLeftRight,
+  TrendingUp,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Scale,
+  CalendarDays,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useCashAccounts } from '@/hooks/useCashAccounts'
 import { useCashCategories } from '@/hooks/useCashCategories'
@@ -17,6 +27,7 @@ import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/common/EmptyState'
+import { MetricCard } from '@/components/common/MetricCard'
 import {
   Table,
   TableBody,
@@ -25,12 +36,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { PageHeaderSkeleton, TableSkeleton } from '@/components/ui/skeleton'
+import { MetricCardSkeleton, PageHeaderSkeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { formatCurrency, formatDate, todayISO } from '@/utils/format'
 import { formatCategoryLabel, isCategorySelectionValid, resolveTransactionCategoryId, splitCategorySelection } from '@/utils/cashCategories'
-import { CashTransactionFilters, resolveFilterCategoryId, type TransactionFilters } from '@/components/cash/CashTransactionFilters'
+import { CashTransactionFilters, resolveFilterCategoryParams, type TransactionFilters } from '@/components/cash/CashTransactionFilters'
 import { CategorySubcategoryFields } from '@/components/cash/CategorySubcategoryFields'
 import { QuickTransactionModal } from '@/components/cash/QuickTransactionModal'
+import { TransactionWeeklyBreakdown } from '@/components/cash/TransactionWeeklyBreakdown'
 import { Pagination } from '@/components/ui/pagination'
 import { cn } from '@/utils/cn'
 import { ROUTES } from '@/constants'
@@ -80,7 +92,7 @@ export function CashTransactionsPage() {
   const [filters, setFilters] = useState<TransactionFilters>({
     cashAccountId: '',
     parentCategoryId: '',
-    subcategoryId: '',
+    subcategoryIds: [],
     type: '',
     startDate: '',
     endDate: '',
@@ -91,10 +103,10 @@ export function CashTransactionsPage() {
   const [page, setPage] = useState(1)
 
   const queryFilters = useMemo(() => {
-    const categoryId = resolveFilterCategoryId(filters)
+    const categoryParams = resolveFilterCategoryParams(filters)
     return {
       ...(filters.cashAccountId ? { cashAccountId: filters.cashAccountId } : {}),
-      ...(categoryId ? { categoryId } : {}),
+      ...categoryParams,
       ...(filters.type ? { type: filters.type } : {}),
       ...(filters.startDate ? { startDate: filters.startDate } : {}),
       ...(filters.endDate ? { endDate: filters.endDate } : {}),
@@ -106,8 +118,10 @@ export function CashTransactionsPage() {
 
   const { data: accounts = [], isLoading: accountsLoading } = useCashAccounts()
   const { data: allCategories = [] } = useCashCategories()
-  const { data: transactions = [], isLoading: txLoading, isFetching: txFetching } =
+  const { data: txData, isLoading: txLoading, isFetching: txFetching } =
     useCashTransactions(queryFilters)
+  const transactions = txData?.items ?? []
+  const stats = txData?.stats
   const createTx = useCreateCashTransaction()
   const updateTx = useUpdateCashTransaction()
   const deleteTx = useDeleteCashTransaction()
@@ -356,7 +370,69 @@ export function CashTransactionsPage() {
             onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
           />
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {txLoading && !stats ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <MetricCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : stats ? (
+            <div
+              className={cn(
+                'grid gap-3 sm:grid-cols-2 lg:grid-cols-4 transition-opacity',
+                txFetching && 'opacity-60',
+              )}
+            >
+              <MetricCard
+                title="Ingresos"
+                value={formatCurrency(stats.totalIncome)}
+                icon={ArrowDownLeft}
+                trend="up"
+                subtitle={`${stats.incomeCount} movimiento${stats.incomeCount === 1 ? '' : 's'}`}
+              />
+              <MetricCard
+                title="Gastos"
+                value={formatCurrency(stats.totalExpense)}
+                icon={ArrowUpRight}
+                trend="down"
+                subtitle={`${stats.expenseCount} movimiento${stats.expenseCount === 1 ? '' : 's'}`}
+              />
+              <MetricCard
+                title="Neto"
+                value={formatCurrency(stats.net)}
+                icon={Scale}
+                trend={stats.net >= 0 ? 'up' : 'down'}
+                subtitle={`${stats.transactionCount} en total`}
+              />
+              <MetricCard
+                title="Promedio gasto/día"
+                value={formatCurrency(stats.averageDailyExpense)}
+                icon={CalendarDays}
+                subtitle={
+                  stats.totalDays > 0
+                    ? `${stats.totalDays} día${stats.totalDays === 1 ? '' : 's'} del período`
+                    : 'Sin rango de fechas'
+                }
+              />
+            </div>
+          ) : null}
+
+          {stats && (stats.byWeek?.length ?? 0) > 0 ? (
+            <div
+              className={cn(
+                'rounded-lg border bg-muted/30 p-3 sm:p-4 transition-opacity',
+                txFetching && 'opacity-60',
+              )}
+            >
+              <TransactionWeeklyBreakdown stats={stats} />
+            </div>
+          ) : stats && (!filters.startDate || !filters.endDate) ? (
+            <p className="text-xs text-muted-foreground">
+              Elegí fecha desde y hasta para ver el gasto por semana (lunes a domingo).
+            </p>
+          ) : null}
+
           {txLoading && transactions.length === 0 ? (
             <TableSkeleton rows={4} />
           ) : transactions.length === 0 ? (

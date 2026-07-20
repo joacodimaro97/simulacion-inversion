@@ -50,11 +50,12 @@ export function BudgetDetailModal({ open, budget, onClose, onEdit }: BudgetDetai
       }
     : undefined
 
-  const { data: transactions = [] } = useQuery({
+  const { data: txData } = useQuery({
     queryKey: queryKeys.cash.transactions(txFilters),
     queryFn: () => CashTransactionService.getTransactions(txFilters),
     enabled: open && Boolean(display),
   })
+  const transactions = txData?.items ?? []
 
   const allowedCategoryIds = useMemo(() => {
     if (!display || !byCategory) return undefined
