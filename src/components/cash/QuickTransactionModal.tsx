@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useCashAccounts } from '@/hooks/useCashAccounts'
 import { useCashCategories } from '@/hooks/useCashCategories'
-import { useCreateCashTransaction } from '@/hooks/useCashTransactions'
+import { useCashTransactions, useCreateCashTransaction } from '@/hooks/useCashTransactions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,6 +31,8 @@ interface QuickForm {
   cashAccountId: string
   parentCategoryId: string
   subcategoryId: string
+  isReimbursement: boolean
+  relatedExpenseId: string
   amount: string
   date: string
   description: string
@@ -44,6 +46,12 @@ export function QuickTransactionModal({
 }: QuickTransactionModalProps) {
   const { data: accounts = [] } = useCashAccounts()
   const createTx = useCreateCashTransaction()
+  const { data: expenseTxData } = useCashTransactions({
+    type: 'EXPENSE',
+    excludeTransfers: true,
+    excludeFundings: true,
+  })
+  const expenseTransactions = expenseTxData?.items ?? []
 
   const { register, handleSubmit, reset, setValue, watch } = useForm<QuickForm>({
     defaultValues: {
@@ -51,6 +59,8 @@ export function QuickTransactionModal({
       cashAccountId: defaultAccountId ?? '',
       parentCategoryId: '',
       subcategoryId: '',
+      isReimbursement: false,
+      relatedExpenseId: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -60,6 +70,8 @@ export function QuickTransactionModal({
   const formType = watch('type')
   const parentCategoryId = watch('parentCategoryId')
   const subcategoryId = watch('subcategoryId')
+  const isReimbursement = watch('isReimbursement')
+  const isLinkedIncome = formType === 'INCOME' && isReimbursement
   const { data: categories = [] } = useCashCategories({ type: formType })
 
   const parentCategories = useMemo(
@@ -72,6 +84,10 @@ export function QuickTransactionModal({
     parentCategoryId,
     subcategoryId,
   )
+  const submitDisabled =
+    createTx.isPending ||
+    parentCategories.length === 0 ||
+    (isLinkedIncome ? !watch('relatedExpenseId') : !selectionValid)
 
   useEffect(() => {
     if (!open) return
@@ -85,6 +101,8 @@ export function QuickTransactionModal({
       cashAccountId: defaultAccountId ?? accounts[0]?.id ?? '',
       parentCategoryId: firstParentId,
       subcategoryId: firstSubcategoryId,
+      isReimbursement: false,
+      relatedExpenseId: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -100,11 +118,18 @@ export function QuickTransactionModal({
   const onSubmit = async (data: QuickForm) => {
     await createTx.mutateAsync({
       cashAccountId: data.cashAccountId,
-      categoryId: resolveTransactionCategoryId(data.parentCategoryId, data.subcategoryId),
+      categoryId:
+        data.type === 'INCOME' && data.isReimbursement && data.relatedExpenseId
+          ? undefined
+          : resolveTransactionCategoryId(data.parentCategoryId, data.subcategoryId),
       type: data.type,
       amount: Number(data.amount),
       date: data.date,
       description: data.description || undefined,
+      relatedExpenseId:
+        data.type === 'INCOME' && data.isReimbursement && data.relatedExpenseId
+          ? data.relatedExpenseId
+          : undefined,
     })
     onClose()
   }
@@ -124,7 +149,7 @@ export function QuickTransactionModal({
             type="submit"
             form="quick-transaction-form"
             className="flex-1"
-            disabled={createTx.isPending || parentCategories.length === 0 || !selectionValid}
+            disabled={submitDisabled}
           >
             {createTx.isPending ? 'Guardando...' : 'Guardar'}
           </Button>
@@ -145,6 +170,10 @@ export function QuickTransactionModal({
                 setValue('type', t)
                 setValue('parentCategoryId', '')
                 setValue('subcategoryId', '')
+                if (t !== 'INCOME') {
+                  setValue('isReimbursement', false)
+                  setValue('relatedExpenseId', '')
+                }
               }}
               className={cn(
                 'min-h-11 rounded-md py-2.5 text-sm font-medium transition-colors',
@@ -183,14 +212,16 @@ export function QuickTransactionModal({
           </Select>
         </div>
 
-        <CategorySubcategoryFields
-          categories={categories}
-          type={formType}
-          parentCategoryId={parentCategoryId}
-          subcategoryId={subcategoryId}
-          onParentChange={(id) => setValue('parentCategoryId', id)}
-          onSubcategoryChange={(id) => setValue('subcategoryId', id)}
-        />
+        {!isLinkedIncome && (
+          <CategorySubcategoryFields
+            categories={categories}
+            type={formType}
+            parentCategoryId={parentCategoryId}
+            subcategoryId={subcategoryId}
+            onParentChange={(id) => setValue('parentCategoryId', id)}
+            onSubcategoryChange={(id) => setValue('subcategoryId', id)}
+          />
+        )}
 
         <div className="space-y-2">
           <Label>Fecha</Label>
@@ -201,6 +232,41 @@ export function QuickTransactionModal({
           <Label>Descripción (opcional)</Label>
           <Input placeholder="Ej: Supermercado" {...register('description')} />
         </div>
+
+        {formType === 'INCOME' && (
+          <>
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-input"
+                checked={watch('isReimbursement')}
+                onChange={(e) => {
+                  setValue('isReimbursement', e.target.checked)
+                  if (!e.target.checked) setValue('relatedExpenseId', '')
+                }}
+              />
+              Es reintegro de un gasto
+            </label>
+
+            {watch('isReimbursement') && (
+              <div className="space-y-2">
+                <Label>Gasto relacionado</Label>
+                <Select
+                  value={watch('relatedExpenseId')}
+                  onChange={(e) => setValue('relatedExpenseId', e.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar gasto...</option>
+                  {expenseTransactions.map((tx) => (
+                    <option key={tx.id} value={tx.id}>
+                      {tx.date.split('T')[0]} · ${tx.amount.toFixed(2)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+          </>
+        )}
       </form>
     </Dialog>
   )

@@ -94,6 +94,8 @@ interface TransactionForm {
   type: CashTransactionType
   parentCategoryId: string
   subcategoryId: string
+  isReimbursement: boolean
+  relatedExpenseId: string
   amount: string
   date: string
   description: string
@@ -133,6 +135,12 @@ export function CashTransactionsPage() {
     useCashTransactions(queryFilters)
   const transactions = txData?.items ?? []
   const stats = txData?.stats
+  const { data: expenseTxData } = useCashTransactions({
+    type: 'EXPENSE',
+    excludeTransfers: true,
+    excludeFundings: true,
+  })
+  const expenseTransactions = expenseTxData?.items ?? []
   const createTx = useCreateCashTransaction()
   const updateTx = useUpdateCashTransaction()
   const deleteTx = useDeleteCashTransaction()
@@ -143,6 +151,8 @@ export function CashTransactionsPage() {
       type: 'EXPENSE',
       parentCategoryId: '',
       subcategoryId: '',
+      isReimbursement: false,
+      relatedExpenseId: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -152,6 +162,8 @@ export function CashTransactionsPage() {
   const formType = watch('type')
   const parentCategoryId = watch('parentCategoryId')
   const subcategoryId = watch('subcategoryId')
+  const isReimbursement = watch('isReimbursement')
+  const isLinkedIncome = formType === 'INCOME' && isReimbursement
   const formCategories = useMemo(
     () => allCategories.filter((c) => c.type === formType),
     [allCategories, formType],
@@ -161,6 +173,10 @@ export function CashTransactionsPage() {
     parentCategoryId,
     subcategoryId,
   )
+  const canSubmit =
+    createTx.isPending ||
+    updateTx.isPending ||
+    (isLinkedIncome ? !watch('relatedExpenseId') : !selectionValid)
 
   const categoryMap = useMemo(
     () => new Map(allCategories.map((c) => [c.id, c])),
@@ -210,6 +226,8 @@ export function CashTransactionsPage() {
       type: tx.type,
       parentCategoryId: parentId,
       subcategoryId: subId,
+      isReimbursement: Boolean(tx.relatedExpenseId),
+      relatedExpenseId: tx.relatedExpenseId ?? '',
       amount: String(tx.amount),
       date: tx.date.split('T')[0] ?? tx.date,
       description: tx.description ?? '',
@@ -226,6 +244,8 @@ export function CashTransactionsPage() {
       type: 'EXPENSE',
       parentCategoryId: '',
       subcategoryId: '',
+      isReimbursement: false,
+      relatedExpenseId: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -233,9 +253,17 @@ export function CashTransactionsPage() {
   }
 
   const onSubmit = async (data: TransactionForm) => {
-    const payload = {
+    const relatedExpenseId =
+      data.type === 'INCOME' && data.isReimbursement && data.relatedExpenseId
+        ? data.relatedExpenseId
+        : null
+
+    const basePayload = {
       cashAccountId: data.cashAccountId,
-      categoryId: resolveTransactionCategoryId(data.parentCategoryId, data.subcategoryId),
+      categoryId:
+        relatedExpenseId === null
+          ? resolveTransactionCategoryId(data.parentCategoryId, data.subcategoryId)
+          : undefined,
       type: data.type,
       amount: Number(data.amount),
       date: data.date,
@@ -243,17 +271,25 @@ export function CashTransactionsPage() {
     }
 
     if (editing) {
-      await updateTx.mutateAsync({ id: editing.id, input: payload })
+      await updateTx.mutateAsync({
+        id: editing.id,
+        input: { ...basePayload, relatedExpenseId },
+      })
       cancelEdit()
       return
     }
 
-    await createTx.mutateAsync(payload)
+    await createTx.mutateAsync({
+      ...basePayload,
+      relatedExpenseId: relatedExpenseId ?? undefined,
+    })
     reset({
       cashAccountId: data.cashAccountId,
       type: data.type,
       parentCategoryId: data.parentCategoryId,
       subcategoryId: data.subcategoryId,
+      isReimbursement: false,
+      relatedExpenseId: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -311,20 +347,26 @@ export function CashTransactionsPage() {
                     setValue('type', e.target.value as CashTransactionType)
                     setValue('parentCategoryId', '')
                     setValue('subcategoryId', '')
+                    if (e.target.value !== 'INCOME') {
+                      setValue('isReimbursement', false)
+                      setValue('relatedExpenseId', '')
+                    }
                   }}
                 >
                   <option value="EXPENSE">Gasto</option>
                   <option value="INCOME">Ingreso</option>
                 </Select>
               </div>
-              <CategorySubcategoryFields
-                categories={formCategories}
-                type={formType}
-                parentCategoryId={parentCategoryId}
-                subcategoryId={subcategoryId}
-                onParentChange={(id) => setValue('parentCategoryId', id)}
-                onSubcategoryChange={(id) => setValue('subcategoryId', id)}
-              />
+              {!isLinkedIncome && (
+                <CategorySubcategoryFields
+                  categories={formCategories}
+                  type={formType}
+                  parentCategoryId={parentCategoryId}
+                  subcategoryId={subcategoryId}
+                  onParentChange={(id) => setValue('parentCategoryId', id)}
+                  onSubcategoryChange={(id) => setValue('subcategoryId', id)}
+                />
+              )}
               <div className="space-y-2">
                 <Label>Monto</Label>
                 <Input
@@ -344,10 +386,46 @@ export function CashTransactionsPage() {
                 <Input {...register('description')} placeholder="Opcional" />
               </div>
             </div>
+            {formType === 'INCOME' && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-input"
+                    checked={watch('isReimbursement')}
+                    onChange={(e) => {
+                      setValue('isReimbursement', e.target.checked)
+                      if (!e.target.checked) setValue('relatedExpenseId', '')
+                    }}
+                  />
+                  Es reintegro de un gasto
+                </label>
+                {watch('isReimbursement') && (
+                  <div className="space-y-2">
+                    <Label>Gasto relacionado</Label>
+                    <Select
+                      value={watch('relatedExpenseId')}
+                      onChange={(e) => setValue('relatedExpenseId', e.target.value)}
+                      required
+                    >
+                      <option value="">Seleccionar gasto...</option>
+                      {expenseTransactions
+                        .filter((tx) => !editing || tx.id !== editing.id)
+                        .map((tx) => (
+                          <option key={tx.id} value={tx.id}>
+                            {formatDate(tx.date)} · {formatCurrency(tx.amount)} ·{' '}
+                            {categoryMap.get(tx.categoryId)?.name ?? 'Sin categoría'}
+                          </option>
+                        ))}
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex gap-2">
               <Button
                 type="submit"
-                disabled={createTx.isPending || updateTx.isPending || !selectionValid}
+                disabled={canSubmit}
               >
                 <Plus className="h-4 w-4" />
                 {editing ? 'Guardar cambios' : 'Registrar'}
