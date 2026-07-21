@@ -60,6 +60,7 @@ export function useRefreshTelegramStatus() {
         showToast({
           title: 'Aún no vinculado',
           description: 'Tocá Start en Telegram y volvé a actualizar.',
+          variant: 'default',
         })
       }
     },
