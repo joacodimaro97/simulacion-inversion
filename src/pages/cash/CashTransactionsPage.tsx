@@ -10,6 +10,7 @@ import {
   ArrowUpRight,
   Scale,
   CalendarDays,
+  CreditCard,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useCashAccounts } from '@/hooks/useCashAccounts'
@@ -51,7 +52,7 @@ import type { CashTransaction, CashTransactionType } from '@/types/cash'
 const PAGE_SIZE = 10
 
 function isSystemTransaction(tx: CashTransaction) {
-  return Boolean(tx.transferId || tx.fundingId)
+  return Boolean(tx.transferId || tx.fundingId || tx.creditInstallmentId)
 }
 
 function SystemBadge({ tx }: { tx: CashTransaction }) {
@@ -71,6 +72,16 @@ function SystemBadge({ tx }: { tx: CashTransaction }) {
         <Badge variant="secondary" className="hover:opacity-80">
           <TrendingUp className="mr-1 h-3 w-3" />
           Efectivo ↔ Inv.
+        </Badge>
+      </Link>
+    )
+  }
+  if (tx.creditInstallmentId) {
+    return (
+      <Link to={ROUTES.CREDITS}>
+        <Badge variant="outline" className="hover:opacity-80">
+          <CreditCard className="mr-1 h-3 w-3" />
+          Crédito
         </Badge>
       </Link>
     )

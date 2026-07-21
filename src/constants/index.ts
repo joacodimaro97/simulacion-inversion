@@ -14,11 +14,19 @@ export const ROUTES = {
   CASH_TRANSFERS: '/cash/transfers',
   CASH_FUNDINGS: '/cash/fundings',
   CASH_BUDGETS: '/cash/budgets',
+  CREDITS: '/credits',
+  CREDITS_NEW: '/credits/new',
+  CREDITS_CALENDAR: '/credits/calendar',
+  creditDetail: (id: string) => `/credits/${id}`,
+  SETTINGS: '/configuracion',
 } as const
 
 export const queryKeys = {
   auth: {
     me: ['auth', 'me'] as const,
+  },
+  telegram: {
+    status: ['telegram', 'status'] as const,
   },
   accounts: {
     all: ['accounts'] as const,
@@ -52,5 +60,12 @@ export const queryKeys = {
   },
   fundings: {
     all: (filters?: unknown) => ['fundings', filters] as const,
+  },
+  credits: {
+    all: ['credits'] as const,
+    list: (filters?: unknown) => ['credits', 'list', filters] as const,
+    summary: (upcomingLimit?: number) => ['credits', 'summary', upcomingLimit] as const,
+    calendar: (filters?: unknown) => ['credits', 'calendar', filters] as const,
+    detail: (id: string) => ['credits', 'detail', id] as const,
   },
 } as const

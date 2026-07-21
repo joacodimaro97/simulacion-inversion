@@ -26,6 +26,7 @@ export interface User {
   id: string
   name: string
   email: string
+  telegramLinked: boolean
   createdAt: string
   updatedAt: string
 }

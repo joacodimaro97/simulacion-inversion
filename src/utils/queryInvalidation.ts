@@ -77,3 +77,11 @@ export function invalidatePerformance(queryClient: QueryClient) {
 export function invalidateSimulations(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ queryKey: ['simulations'], ...REFETCH_ALL })
 }
+
+export function invalidateCredits(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['credits'], ...REFETCH_ALL }),
+    invalidateCashTransactions(queryClient),
+    invalidateCashAccounts(queryClient),
+  ])
+}

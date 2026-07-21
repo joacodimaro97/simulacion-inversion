@@ -20,6 +20,8 @@ import { CashTransactionsPage } from '@/pages/cash/CashTransactionsPage'
 import { CashTransfersPage } from '@/pages/cash/CashTransfersPage'
 import { CashFundingsPage } from '@/pages/cash/CashFundingsPage'
 import { CashBudgetsPage } from '@/pages/cash/CashBudgetsPage'
+import { CreditsPage } from '@/pages/credits/CreditsPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 import { ROUTES } from '@/constants'
 import { useTheme } from '@/hooks/useTheme'
 
@@ -64,6 +66,11 @@ function AppRoutes() {
             <Route path={ROUTES.CASH_TRANSFERS} element={<CashTransfersPage />} />
             <Route path={ROUTES.CASH_FUNDINGS} element={<CashFundingsPage />} />
             <Route path={ROUTES.CASH_BUDGETS} element={<CashBudgetsPage />} />
+            <Route path={ROUTES.CREDITS} element={<CreditsPage />} />
+            <Route path={ROUTES.CREDITS_NEW} element={<CreditsPage />} />
+            <Route path={ROUTES.CREDITS_CALENDAR} element={<CreditsPage />} />
+            <Route path="/credits/:creditId" element={<CreditsPage />} />
+            <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to={ROUTES.CASH} replace />} />

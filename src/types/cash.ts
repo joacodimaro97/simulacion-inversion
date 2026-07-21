@@ -73,6 +73,8 @@ export interface CashTransaction {
   description: string | null
   transferId: string | null
   fundingId: string | null
+  /** Presente si la transacción fue generada al pagar una cuota de crédito. */
+  creditInstallmentId?: string | null
   createdAt: string
 }
 

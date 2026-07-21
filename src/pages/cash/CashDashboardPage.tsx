@@ -388,6 +388,7 @@ export function CashDashboardPage() {
                 const category = categories.find((c) => c.id === tx.categoryId)
                 const isTransfer = Boolean(tx.transferId)
                 const isFunding = Boolean(tx.fundingId)
+                const isCredit = Boolean(tx.creditInstallmentId)
                 return (
                   <div
                     key={tx.id}
@@ -409,6 +410,8 @@ export function CashDashboardPage() {
                         <Badge variant="slate">Transferencia</Badge>
                       ) : isFunding ? (
                         <Badge variant="secondary">Efectivo ↔ Inv.</Badge>
+                      ) : isCredit ? (
+                        <Badge variant="outline">Crédito</Badge>
                       ) : (
                         <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
                           {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
@@ -417,14 +420,14 @@ export function CashDashboardPage() {
                       <span
                         className={cn(
                           'text-sm font-semibold',
-                          isTransfer
+                          isTransfer || isCredit
                             ? 'text-slate-600'
                             : tx.type === 'INCOME'
                               ? 'text-success'
                               : 'text-destructive',
                         )}
                       >
-                        {!isTransfer && (tx.type === 'INCOME' ? '+' : '-')}
+                        {!isTransfer && !isCredit && (tx.type === 'INCOME' ? '+' : '-')}
                         {formatCurrency(tx.amount)}
                       </span>
                     </div>

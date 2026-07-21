@@ -12,9 +12,11 @@ import {
   PiggyBank,
   TrendingUp,
   Target,
+  CreditCard,
   LogOut,
   ChevronDown,
   Menu,
+  Settings,
 } from 'lucide-react'
 import { ROUTES } from '@/constants'
 import { cn } from '@/utils/cn'
@@ -32,6 +34,7 @@ const investmentItems = [
 const cashItems = [
   { to: ROUTES.CASH, label: 'Resumen', icon: Wallet },
   { to: ROUTES.CASH_TRANSACTIONS, label: 'Transacciones', icon: Receipt },
+  { to: ROUTES.CREDITS, label: 'Créditos', icon: CreditCard },
   { to: ROUTES.CASH_BUDGETS, label: 'Presupuestos', icon: Target },
   { to: ROUTES.CASH_TRANSFERS, label: 'Transferencias', icon: ArrowLeftRight },
   { to: ROUTES.CASH_FUNDINGS, label: 'Efectivo ↔ Inv.', icon: TrendingUp },
@@ -175,10 +178,25 @@ export function Sidebar() {
 
       <div className="shrink-0 border-t bg-card p-4">
         {user && (
-          <div className="mb-3 rounded-lg bg-muted/50 px-3 py-2">
-            <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-          </div>
+          <NavLink
+            to={ROUTES.SETTINGS}
+            className={({ isActive }) =>
+              cn(
+                'mb-3 block rounded-lg px-3 py-2 transition-colors',
+                isActive
+                  ? 'bg-primary/10 ring-1 ring-primary/20'
+                  : 'bg-muted/50 hover:bg-muted',
+              )
+            }
+          >
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+              </div>
+              <Settings className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </div>
+          </NavLink>
         )}
         <button
           type="button"
@@ -196,7 +214,8 @@ export function Sidebar() {
 export function MobileNav() {
   const { pathname } = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
-  const moreActive = isInvestmentPath(pathname)
+  const moreActive =
+    isInvestmentPath(pathname) || pathname.startsWith(ROUTES.SETTINGS)
 
   return (
     <>
@@ -239,6 +258,23 @@ export function MobileNav() {
         description="Inversiones y otras secciones"
       >
         <div className="space-y-6">
+          <div className="space-y-1">
+            <NavLink
+              to={ROUTES.SETTINGS}
+              onClick={() => setMoreOpen(false)}
+              className={({ isActive }) =>
+                cn(
+                  'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-foreground hover:bg-muted',
+                )
+              }
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              Configuración
+            </NavLink>
+          </div>
           <div className="space-y-1">
             <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Gastos e ingresos
@@ -305,14 +341,23 @@ export function MobileTopBar() {
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={logout}
-        className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive"
-      >
-        <LogOut className="h-4 w-4" />
-        Salir
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        <NavLink
+          to={ROUTES.SETTINGS}
+          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-input bg-background px-3 py-2 text-muted-foreground"
+          aria-label="Configuración"
+        >
+          <Settings className="h-4 w-4" />
+        </NavLink>
+        <button
+          type="button"
+          onClick={logout}
+          className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive"
+        >
+          <LogOut className="h-4 w-4" />
+          Salir
+        </button>
+      </div>
     </div>
   )
 }
