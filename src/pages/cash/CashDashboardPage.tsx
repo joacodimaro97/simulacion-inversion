@@ -293,20 +293,32 @@ export function CashDashboardPage() {
                 }
               />
               <MetricCard
-                title="Gastos"
-                value={formatCurrency(summary.totalExpense)}
+                title="Gastos netos"
+                value={formatCurrency(summary.totalExpenseNet)}
                 icon={ArrowUpRight}
                 trend="down"
                 subtitle={
                   <KpiBreakdown
-                    rows={[...expenseParents]
+                    rows={[
+                      ...(summary.totalReimbursed > 0
+                        ? [
+                            {
+                              key: 'reimbursed',
+                              label: 'Reintegros vinculados',
+                              value: formatCurrency(summary.totalReimbursed),
+                              tone: 'success' as const,
+                            },
+                          ]
+                        : []),
+                      ...[...expenseParents]
                       .sort((a, b) => b.total - a.total)
                       .map((item) => ({
                         key: item.categoryId,
                         label: item.categoryName,
                         value: formatCurrency(item.total),
                         tone: 'destructive',
-                      }))}
+                      })),
+                    ]}
                   />
                 }
               />
@@ -338,7 +350,7 @@ export function CashDashboardPage() {
               <ChartCard title="Ingresos vs gastos">
                 <CashIncomeExpenseChart
                   totalIncome={summary.totalIncome}
-                  totalExpense={summary.totalExpense}
+                  totalExpense={summary.totalExpenseNet}
                 />
               </ChartCard>
               <ChartCard title="Detalle por categoría y subcategoría">

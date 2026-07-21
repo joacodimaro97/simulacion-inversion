@@ -73,16 +73,18 @@ export interface CashTransaction {
   description: string | null
   transferId: string | null
   fundingId: string | null
+  relatedExpenseId?: string | null
   createdAt: string
 }
 
 export interface CreateCashTransactionInput {
   cashAccountId: string
-  categoryId: string
+  categoryId?: string
   type: CashTransactionType
   amount: number
   date: string
   description?: string
+  relatedExpenseId?: string
 }
 
 export interface UpdateCashTransactionInput {
@@ -92,6 +94,7 @@ export interface UpdateCashTransactionInput {
   amount?: number
   date?: string
   description?: string | null
+  relatedExpenseId?: string | null
 }
 
 export interface CashTransactionQuery {
@@ -212,6 +215,8 @@ export interface CashSummary {
   openingBalance: number
   totalIncome: number
   totalExpense: number
+  totalExpenseNet: number
+  totalReimbursed: number
   balance: number
   byCategory: CashSummaryByCategory[]
   byParentCategory: CashSummaryByParentCategory[]
