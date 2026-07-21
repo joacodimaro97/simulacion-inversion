@@ -312,13 +312,13 @@ export function CashDashboardPage() {
                           ]
                         : []),
                       ...[...expenseParents]
-                      .sort((a, b) => b.total - a.total)
-                      .map((item) => ({
-                        key: item.categoryId,
-                        label: item.categoryName,
-                        value: formatCurrency(item.total),
-                        tone: 'destructive',
-                      })),
+                        .sort((a, b) => b.total - a.total)
+                        .map((item) => ({
+                          key: item.categoryId,
+                          label: item.categoryName,
+                          value: formatCurrency(item.total),
+                          tone: 'destructive' as const,
+                        })),
                     ]}
                   />
                 }
