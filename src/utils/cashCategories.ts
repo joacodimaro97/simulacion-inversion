@@ -57,6 +57,27 @@ export function formatCategoryLabel(
   return parent ? `${parent.name} / ${category.name}` : category.name
 }
 
+/** Label para selects de gasto relacionado (reintegros). */
+export function formatRelatedExpenseOption(
+  tx: {
+    date: string
+    amount: number
+    description: string | null
+    categoryId: string
+  },
+  categories: Category[],
+  formatDate: (date: string) => string,
+  formatCurrency: (amount: number) => string,
+): string {
+  const category = categories.find((c) => c.id === tx.categoryId)
+  // Si es subcategoría, mostrar solo la subcategoría; si no, la categoría raíz.
+  const categoryLabel = category?.name ?? 'Sin categoría'
+  const parts = [formatDate(tx.date), formatCurrency(tx.amount), categoryLabel]
+  const description = tx.description?.trim()
+  if (description) parts.push(description)
+  return parts.join(' · ')
+}
+
 export function buildCategoryOptions(
   categories: Category[],
   type: CashTransactionType,

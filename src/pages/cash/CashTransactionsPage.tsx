@@ -43,6 +43,8 @@ import { formatCategoryLabel, isCategorySelectionValid, resolveTransactionCatego
 import { CashTransactionFilters, resolveFilterCategoryParams, type TransactionFilters } from '@/components/cash/CashTransactionFilters'
 import { CategorySubcategoryFields } from '@/components/cash/CategorySubcategoryFields'
 import { QuickTransactionModal } from '@/components/cash/QuickTransactionModal'
+import { ReimbursementFields } from '@/components/cash/ReimbursementFields'
+import { TransactionTypeToggle } from '@/components/cash/TransactionTypeToggle'
 import { TransactionWeeklyBreakdown } from '@/components/cash/TransactionWeeklyBreakdown'
 import { Pagination } from '@/components/ui/pagination'
 import { cn } from '@/utils/cn'
@@ -158,6 +160,13 @@ export function CashTransactionsPage() {
       description: '',
     },
   })
+
+  // Asegura que `type` esté registrado para que setValue + watch re-rendericen.
+  register('type')
+  register('isReimbursement')
+  register('relatedExpenseId')
+  register('parentCategoryId')
+  register('subcategoryId')
 
   const formType = watch('type')
   const parentCategoryId = watch('parentCategoryId')
@@ -327,8 +336,34 @@ export function CashTransactionsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <TransactionTypeToggle
+              value={formType}
+              onChange={(type) => {
+                setValue('type', type, { shouldDirty: true, shouldTouch: true })
+                setValue('parentCategoryId', '', { shouldDirty: true })
+                setValue('subcategoryId', '', { shouldDirty: true })
+                if (type !== 'INCOME') {
+                  setValue('isReimbursement', false, { shouldDirty: true })
+                  setValue('relatedExpenseId', '', { shouldDirty: true })
+                }
+              }}
+            />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Monto</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0,00"
+                  className="h-12 text-lg font-semibold tabular-nums"
+                  {...register('amount', { required: true })}
+                  required
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label>Cuenta</Label>
                 <Select {...register('cashAccountId', { required: true })}>
@@ -339,94 +374,60 @@ export function CashTransactionsPage() {
                   ))}
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select
-                  value={formType}
-                  onChange={(e) => {
-                    setValue('type', e.target.value as CashTransactionType)
-                    setValue('parentCategoryId', '')
-                    setValue('subcategoryId', '')
-                    if (e.target.value !== 'INCOME') {
-                      setValue('isReimbursement', false)
-                      setValue('relatedExpenseId', '')
-                    }
-                  }}
-                >
-                  <option value="EXPENSE">Gasto</option>
-                  <option value="INCOME">Ingreso</option>
-                </Select>
-              </div>
-              {!isLinkedIncome && (
-                <CategorySubcategoryFields
-                  categories={formCategories}
-                  type={formType}
-                  parentCategoryId={parentCategoryId}
-                  subcategoryId={subcategoryId}
-                  onParentChange={(id) => setValue('parentCategoryId', id)}
-                  onSubcategoryChange={(id) => setValue('subcategoryId', id)}
-                />
-              )}
-              <div className="space-y-2">
-                <Label>Monto</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  {...register('amount', { required: true })}
-                  required
-                />
-              </div>
+
               <div className="space-y-2">
                 <Label>Fecha</Label>
                 <Input type="date" {...register('date', { required: true })} />
               </div>
-              <div className="space-y-2">
+
+              {!isLinkedIncome && (
+                <CategorySubcategoryFields
+                  key={formType}
+                  categories={formCategories}
+                  type={formType}
+                  parentCategoryId={parentCategoryId}
+                  subcategoryId={subcategoryId}
+                  onParentChange={(id) =>
+                    setValue('parentCategoryId', id, { shouldDirty: true })
+                  }
+                  onSubcategoryChange={(id) =>
+                    setValue('subcategoryId', id, { shouldDirty: true })
+                  }
+                />
+              )}
+
+              <div className="space-y-2 sm:col-span-2">
                 <Label>Descripción</Label>
-                <Input {...register('description')} placeholder="Opcional" />
+                <Input
+                  {...register('description')}
+                  placeholder={
+                    formType === 'EXPENSE'
+                      ? 'Ej: Supermercado, nafta…'
+                      : 'Ej: Sueldo, reintegro…'
+                  }
+                />
               </div>
             </div>
+
             {formType === 'INCOME' && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-input"
-                    checked={watch('isReimbursement')}
-                    onChange={(e) => {
-                      setValue('isReimbursement', e.target.checked)
-                      if (!e.target.checked) setValue('relatedExpenseId', '')
-                    }}
-                  />
-                  Es reintegro de un gasto
-                </label>
-                {watch('isReimbursement') && (
-                  <div className="space-y-2">
-                    <Label>Gasto relacionado</Label>
-                    <Select
-                      value={watch('relatedExpenseId')}
-                      onChange={(e) => setValue('relatedExpenseId', e.target.value)}
-                      required
-                    >
-                      <option value="">Seleccionar gasto...</option>
-                      {expenseTransactions
-                        .filter((tx) => !editing || tx.id !== editing.id)
-                        .map((tx) => (
-                          <option key={tx.id} value={tx.id}>
-                            {formatDate(tx.date)} · {formatCurrency(tx.amount)} ·{' '}
-                            {categoryMap.get(tx.categoryId)?.name ?? 'Sin categoría'}
-                          </option>
-                        ))}
-                    </Select>
-                  </div>
-                )}
-              </div>
+              <ReimbursementFields
+                checked={watch('isReimbursement')}
+                relatedExpenseId={watch('relatedExpenseId')}
+                expenseTransactions={expenseTransactions}
+                categories={allCategories}
+                excludeTransactionId={editing?.id}
+                onCheckedChange={(checked) => {
+                  setValue('isReimbursement', checked, { shouldDirty: true })
+                  if (!checked) setValue('relatedExpenseId', '', { shouldDirty: true })
+                }}
+                onRelatedExpenseChange={(id) =>
+                  setValue('relatedExpenseId', id, { shouldDirty: true })
+                }
+              />
             )}
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                disabled={canSubmit}
-              >
+
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={canSubmit}>
                 <Plus className="h-4 w-4" />
                 {editing ? 'Guardar cambios' : 'Registrar'}
               </Button>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { useCashAccounts } from '@/hooks/useCashAccounts'
 import { useCashCategories } from '@/hooks/useCashCategories'
@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Dialog } from '@/components/ui/dialog'
 import { CategorySubcategoryFields } from '@/components/cash/CategorySubcategoryFields'
+import { ReimbursementFields } from '@/components/cash/ReimbursementFields'
+import { TransactionTypeToggle } from '@/components/cash/TransactionTypeToggle'
 import {
   getCategories,
   getSubcategories,
@@ -16,7 +18,6 @@ import {
   resolveTransactionCategoryId,
 } from '@/utils/cashCategories'
 import { todayISO } from '@/utils/format'
-import { cn } from '@/utils/cn'
 import type { CashTransactionType } from '@/types/cash'
 
 interface QuickTransactionModalProps {
@@ -52,6 +53,7 @@ export function QuickTransactionModal({
     excludeFundings: true,
   })
   const expenseTransactions = expenseTxData?.items ?? []
+  const wasOpenRef = useRef(false)
 
   const { register, handleSubmit, reset, setValue, watch } = useForm<QuickForm>({
     defaultValues: {
@@ -67,12 +69,19 @@ export function QuickTransactionModal({
     },
   })
 
+  register('type')
+  register('isReimbursement')
+  register('relatedExpenseId')
+  register('parentCategoryId')
+  register('subcategoryId')
+
   const formType = watch('type')
   const parentCategoryId = watch('parentCategoryId')
   const subcategoryId = watch('subcategoryId')
   const isReimbursement = watch('isReimbursement')
   const isLinkedIncome = formType === 'INCOME' && isReimbursement
   const { data: categories = [] } = useCashCategories({ type: formType })
+  const { data: expenseCategories = [] } = useCashCategories({ type: 'EXPENSE' })
 
   const parentCategories = useMemo(
     () => getCategories(categories, formType),
@@ -86,16 +95,21 @@ export function QuickTransactionModal({
   )
   const submitDisabled =
     createTx.isPending ||
-    parentCategories.length === 0 ||
+    (!isLinkedIncome && parentCategories.length === 0) ||
     (isLinkedIncome ? !watch('relatedExpenseId') : !selectionValid)
 
+  // Solo resetear al abrir el modal, no cuando cambian las categorías al cambiar tipo.
   useEffect(() => {
-    if (!open) return
+    const justOpened = open && !wasOpenRef.current
+    wasOpenRef.current = open
+    if (!justOpened) return
+
     const parents = getCategories(categories, defaultType)
     const firstParentId = parents[0]?.id ?? ''
     const firstSubcategoryId = firstParentId
       ? (getSubcategories(categories, firstParentId)[0]?.id ?? '')
       : ''
+
     reset({
       type: defaultType,
       cashAccountId: defaultAccountId ?? accounts[0]?.id ?? '',
@@ -111,9 +125,21 @@ export function QuickTransactionModal({
 
   useEffect(() => {
     if (accounts.length > 0 && !watch('cashAccountId')) {
-      setValue('cashAccountId', defaultAccountId ?? accounts[0]!.id)
+      setValue('cashAccountId', defaultAccountId ?? accounts[0]!.id, {
+        shouldDirty: true,
+      })
     }
   }, [accounts, defaultAccountId, setValue, watch])
+
+  const handleTypeChange = (type: CashTransactionType) => {
+    setValue('type', type, { shouldDirty: true, shouldTouch: true })
+    setValue('parentCategoryId', '', { shouldDirty: true })
+    setValue('subcategoryId', '', { shouldDirty: true })
+    if (type !== 'INCOME') {
+      setValue('isReimbursement', false, { shouldDirty: true })
+      setValue('relatedExpenseId', '', { shouldDirty: true })
+    }
+  }
 
   const onSubmit = async (data: QuickForm) => {
     await createTx.mutateAsync({
@@ -161,33 +187,7 @@ export function QuickTransactionModal({
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-4"
       >
-        <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-1">
-          {(['EXPENSE', 'INCOME'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                setValue('type', t)
-                setValue('parentCategoryId', '')
-                setValue('subcategoryId', '')
-                if (t !== 'INCOME') {
-                  setValue('isReimbursement', false)
-                  setValue('relatedExpenseId', '')
-                }
-              }}
-              className={cn(
-                'min-h-11 rounded-md py-2.5 text-sm font-medium transition-colors',
-                formType === t
-                  ? t === 'EXPENSE'
-                    ? 'bg-destructive text-destructive-foreground shadow'
-                    : 'bg-success text-success-foreground shadow'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {t === 'EXPENSE' ? 'Gasto' : 'Ingreso'}
-            </button>
-          ))}
-        </div>
+        <TransactionTypeToggle value={formType} onChange={handleTypeChange} />
 
         <div className="space-y-2">
           <Label>Monto</Label>
@@ -195,77 +195,72 @@ export function QuickTransactionModal({
             type="number"
             step="0.01"
             min="0.01"
-            placeholder="0"
+            placeholder="0,00"
             autoFocus
+            className="h-12 text-lg font-semibold tabular-nums"
             {...register('amount', { required: true })}
           />
         </div>
 
-        <div className="space-y-2">
-          <Label>Cuenta</Label>
-          <Select {...register('cashAccountId', { required: true })}>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Cuenta</Label>
+            <Select {...register('cashAccountId', { required: true })}>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Fecha</Label>
+            <Input type="date" {...register('date', { required: true })} />
+          </div>
         </div>
 
         {!isLinkedIncome && (
-          <CategorySubcategoryFields
-            categories={categories}
-            type={formType}
-            parentCategoryId={parentCategoryId}
-            subcategoryId={subcategoryId}
-            onParentChange={(id) => setValue('parentCategoryId', id)}
-            onSubcategoryChange={(id) => setValue('subcategoryId', id)}
-          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <CategorySubcategoryFields
+              key={formType}
+              categories={categories}
+              type={formType}
+              parentCategoryId={parentCategoryId}
+              subcategoryId={subcategoryId}
+              onParentChange={(id) =>
+                setValue('parentCategoryId', id, { shouldDirty: true })
+              }
+              onSubcategoryChange={(id) =>
+                setValue('subcategoryId', id, { shouldDirty: true })
+              }
+            />
+          </div>
         )}
 
         <div className="space-y-2">
-          <Label>Fecha</Label>
-          <Input type="date" {...register('date', { required: true })} />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Descripción (opcional)</Label>
-          <Input placeholder="Ej: Supermercado" {...register('description')} />
+          <Label>Descripción</Label>
+          <Input
+            placeholder={
+              formType === 'EXPENSE' ? 'Ej: Supermercado, nafta…' : 'Ej: Sueldo, reintegro…'
+            }
+            {...register('description')}
+          />
         </div>
 
         {formType === 'INCOME' && (
-          <>
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-input"
-                checked={watch('isReimbursement')}
-                onChange={(e) => {
-                  setValue('isReimbursement', e.target.checked)
-                  if (!e.target.checked) setValue('relatedExpenseId', '')
-                }}
-              />
-              Es reintegro de un gasto
-            </label>
-
-            {watch('isReimbursement') && (
-              <div className="space-y-2">
-                <Label>Gasto relacionado</Label>
-                <Select
-                  value={watch('relatedExpenseId')}
-                  onChange={(e) => setValue('relatedExpenseId', e.target.value)}
-                  required
-                >
-                  <option value="">Seleccionar gasto...</option>
-                  {expenseTransactions.map((tx) => (
-                    <option key={tx.id} value={tx.id}>
-                      {tx.date.split('T')[0]} · ${tx.amount.toFixed(2)}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            )}
-          </>
+          <ReimbursementFields
+            checked={isReimbursement}
+            relatedExpenseId={watch('relatedExpenseId')}
+            expenseTransactions={expenseTransactions}
+            categories={expenseCategories}
+            onCheckedChange={(checked) => {
+              setValue('isReimbursement', checked, { shouldDirty: true })
+              if (!checked) setValue('relatedExpenseId', '', { shouldDirty: true })
+            }}
+            onRelatedExpenseChange={(id) =>
+              setValue('relatedExpenseId', id, { shouldDirty: true })
+            }
+          />
         )}
       </form>
     </Dialog>
