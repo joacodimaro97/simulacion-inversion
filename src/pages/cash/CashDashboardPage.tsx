@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDownLeft, ArrowUpRight, Wallet, Scale, Landmark, Plus, ArrowLeftRight } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Wallet, Scale, Landmark, Plus, ArrowLeftRight, ChevronDown, LayoutDashboard, CalendarDays, DollarSign } from 'lucide-react'
 import { useCashAccounts } from '@/hooks/useCashAccounts'
 import { useCashSummary } from '@/hooks/useCashSummary'
 import { useCashTransactions } from '@/hooks/useCashTransactions'
@@ -45,6 +45,7 @@ export function CashDashboardPage() {
   const [modalType, setModalType] = useState<CashTransactionType>('EXPENSE')
   const [transferOpen, setTransferOpen] = useState(false)
   const [fundingOpen, setFundingOpen] = useState(false)
+  const [kpisOpen, setKpisOpen] = useState(true)
 
   const openQuickAdd = (type: CashTransactionType) => {
     setModalType(type)
@@ -268,139 +269,202 @@ export function CashDashboardPage() {
       />
 
       <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-medium">Período</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {summaryFetching && !summaryLoading ? 'Actualizando… · ' : ''}
-              {periodLabel}
-            </p>
+        <section className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_1px_3px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-1 border-b border-border/60 bg-muted/20 px-2 py-1 sm:px-3">
+            <button
+              type="button"
+              onClick={() => setKpisOpen((v) => !v)}
+              aria-expanded={kpisOpen}
+              className="flex min-h-10 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/60"
+            >
+              <LayoutDashboard className="h-4 w-4 shrink-0 text-primary" />
+              <span className="text-sm font-semibold tracking-tight">Resumen del período</span>
+              <span className="hidden truncate text-xs font-normal text-muted-foreground sm:inline">
+                · {periodLabel}
+              </span>
+              <ChevronDown
+                className={cn(
+                  'ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                  kpisOpen ? 'rotate-0' : '-rotate-90',
+                )}
+              />
+            </button>
           </div>
-          <CashPeriodFilters
-            year={year}
-            month={month}
-            cashAccountId={cashAccountId}
-            accounts={accounts}
-            years={YEARS}
-            onYearChange={setYear}
-            onMonthChange={setMonth}
-            onAccountChange={setCashAccountId}
-          />
-        </div>
+
+          <div
+            className={cn(
+              'grid transition-[grid-template-rows] duration-200 ease-out',
+              kpisOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="space-y-3 p-2.5 sm:p-3">
+                <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/20 p-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-3">
+                  <div className="flex min-w-0 items-start gap-2.5 sm:items-center">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/10 sm:mt-0">
+                      <CalendarDays className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <div>
+                        <p className="text-sm font-semibold tracking-tight">Período</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {summaryFetching && !summaryLoading ? 'Actualizando… · ' : ''}
+                          {periodLabel}
+                        </p>
+                      </div>
+                      {needsFxAggregation && (
+                        <div
+                          className={cn(
+                            'inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                            usdRate == null
+                              ? 'bg-amber-500/10 text-amber-800 ring-1 ring-amber-500/30 dark:text-amber-200'
+                              : 'bg-muted text-muted-foreground ring-1 ring-border/70',
+                          )}
+                        >
+                          <DollarSign className="h-3 w-3 shrink-0" />
+                          {usdRate == null ? (
+                            <span className="min-w-0">
+                              Cotización USD pendiente ·{' '}
+                              <Link
+                                to={ROUTES.SETTINGS}
+                                className="font-semibold underline underline-offset-2"
+                              >
+                                Configurar
+                              </Link>
+                            </span>
+                          ) : (
+                            <span className="tabular-nums">
+                              1 USD = {usdRate.toLocaleString('es-AR')} ARS
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <CashPeriodFilters
+                    year={year}
+                    month={month}
+                    cashAccountId={cashAccountId}
+                    accounts={accounts}
+                    years={YEARS}
+                    onYearChange={setYear}
+                    onMonthChange={setMonth}
+                    onAccountChange={setCashAccountId}
+                    className="border-0 bg-transparent p-0 shadow-none"
+                  />
+                </div>
+
+                {summaryLoading && !summary ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <MetricCardSkeleton key={i} />
+                    ))}
+                  </div>
+                ) : summary && displayTotals ? (
+                  <div
+                    className={cn(
+                      'grid gap-3 sm:grid-cols-2 lg:grid-cols-4 transition-opacity',
+                      summaryFetching && 'opacity-60',
+                    )}
+                  >
+                    <MetricCard
+                      title="Saldo inicial"
+                      value={formatCurrency(displayTotals.openingBalance)}
+                      icon={Landmark}
+                      className="shadow-none"
+                      subtitle={
+                        <KpiBreakdown
+                          rows={openingBalanceBreakdown.map(({ account, openingBalance, loading }) => ({
+                            key: account.id,
+                            label: account.name,
+                            value: formatCurrencyFor(openingBalance, account.currency),
+                            loading,
+                          }))}
+                        />
+                      }
+                    />
+                    <MetricCard
+                      title="Ingresos"
+                      value={formatCurrency(displayTotals.totalIncome)}
+                      icon={ArrowDownLeft}
+                      trend="up"
+                      className="shadow-none"
+                      subtitle={
+                        <KpiBreakdown
+                          rows={[...incomeParents]
+                            .sort((a, b) => b.total - a.total)
+                            .map((item) => ({
+                              key: item.categoryId,
+                              label: item.categoryName,
+                              value: formatCurrency(item.total),
+                              tone: 'success',
+                            }))}
+                        />
+                      }
+                    />
+                    <MetricCard
+                      title="Gastos netos"
+                      value={formatCurrency(displayTotals.totalExpenseNet)}
+                      icon={ArrowUpRight}
+                      trend="down"
+                      className="shadow-none"
+                      subtitle={
+                        <KpiBreakdown
+                          rows={[
+                            ...(displayTotals.totalReimbursed > 0
+                              ? [
+                                  {
+                                    key: 'reimbursed',
+                                    label: 'Reintegros vinculados',
+                                    value: formatCurrency(displayTotals.totalReimbursed),
+                                    tone: 'success' as const,
+                                  },
+                                ]
+                              : []),
+                            ...[...expenseParents]
+                              .sort((a, b) => b.total - a.total)
+                              .map((item) => ({
+                                key: item.categoryId,
+                                label: item.categoryName,
+                                value: formatCurrency(item.total),
+                                tone: 'destructive' as const,
+                              })),
+                          ]}
+                        />
+                      }
+                    />
+                    <MetricCard
+                      title="Balance"
+                      value={formatCurrency(displayTotals.balance)}
+                      icon={Scale}
+                      trend={displayTotals.balance >= 0 ? 'up' : 'down'}
+                      className="shadow-none"
+                      subtitle={
+                        <KpiBreakdown
+                          rows={balanceBreakdown.map(({ account, balance, loading }) => ({
+                            key: account.id,
+                            label: account.name,
+                            value: formatCurrencyFor(balance, account.currency),
+                            loading,
+                            tone: balance >= 0 ? 'success' : 'destructive',
+                          }))}
+                        />
+                      }
+                    />
+                  </div>
+                ) : (
+                  <EmptyState message="No hay resumen para este período." />
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
 
         {summaryLoading && !summary ? (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <MetricCardSkeleton key={i} />
-              ))}
-            </div>
-            <ChartSkeleton />
-          </>
+          <ChartSkeleton />
         ) : summary && displayTotals ? (
           <>
-            {needsFxAggregation && usdRate == null && (
-              <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
-                Tenés cuentas en USD.{' '}
-                <Link to={ROUTES.SETTINGS} className="font-medium underline underline-offset-2">
-                  Configurá la cotización del dólar
-                </Link>{' '}
-                para que el balance total se convierta a pesos.
-              </p>
-            )}
-            {needsFxAggregation && usdRate != null && (
-              <p className="text-xs text-muted-foreground">
-                Totales en ARS con cotización 1 USD = {usdRate.toLocaleString('es-AR')} ARS
-              </p>
-            )}
-            <div
-              className={cn(
-                'grid gap-4 sm:grid-cols-2 lg:grid-cols-4 transition-opacity',
-                summaryFetching && 'opacity-60',
-              )}
-            >
-              <MetricCard
-                title="Saldo inicial"
-                value={formatCurrency(displayTotals.openingBalance)}
-                icon={Landmark}
-                subtitle={
-                  <KpiBreakdown
-                    rows={openingBalanceBreakdown.map(({ account, openingBalance, loading }) => ({
-                      key: account.id,
-                      label: account.name,
-                      value: formatCurrencyFor(openingBalance, account.currency),
-                      loading,
-                    }))}
-                  />
-                }
-              />
-              <MetricCard
-                title="Ingresos"
-                value={formatCurrency(displayTotals.totalIncome)}
-                icon={ArrowDownLeft}
-                trend="up"
-                subtitle={
-                  <KpiBreakdown
-                    rows={[...incomeParents]
-                      .sort((a, b) => b.total - a.total)
-                      .map((item) => ({
-                        key: item.categoryId,
-                        label: item.categoryName,
-                        value: formatCurrency(item.total),
-                        tone: 'success',
-                      }))}
-                  />
-                }
-              />
-              <MetricCard
-                title="Gastos netos"
-                value={formatCurrency(displayTotals.totalExpenseNet)}
-                icon={ArrowUpRight}
-                trend="down"
-                subtitle={
-                  <KpiBreakdown
-                    rows={[
-                      ...(displayTotals.totalReimbursed > 0
-                        ? [
-                            {
-                              key: 'reimbursed',
-                              label: 'Reintegros vinculados',
-                              value: formatCurrency(displayTotals.totalReimbursed),
-                              tone: 'success' as const,
-                            },
-                          ]
-                        : []),
-                      ...[...expenseParents]
-                        .sort((a, b) => b.total - a.total)
-                        .map((item) => ({
-                          key: item.categoryId,
-                          label: item.categoryName,
-                          value: formatCurrency(item.total),
-                          tone: 'destructive' as const,
-                        })),
-                    ]}
-                  />
-                }
-              />
-              <MetricCard
-                title="Balance"
-                value={formatCurrency(displayTotals.balance)}
-                icon={Scale}
-                trend={displayTotals.balance >= 0 ? 'up' : 'down'}
-                subtitle={
-                  <KpiBreakdown
-                    rows={balanceBreakdown.map(({ account, balance, loading }) => ({
-                      key: account.id,
-                      label: account.name,
-                      value: formatCurrencyFor(balance, account.currency),
-                      loading,
-                      tone: balance >= 0 ? 'success' : 'destructive',
-                    }))}
-                  />
-                }
-              />
-            </div>
-
             <div
               className={cn(
                 'grid gap-6 lg:grid-cols-2 transition-opacity',
@@ -438,9 +502,7 @@ export function CashDashboardPage() {
               </ChartCard>
             </div>
           </>
-        ) : (
-          <EmptyState message="No hay resumen para este período." />
-        )}
+        ) : null}
       </div>
 
       <Card>
@@ -528,26 +590,55 @@ interface KpiBreakdownRow {
 }
 
 function KpiBreakdown({ rows }: { rows: KpiBreakdownRow[] }) {
+  const [open, setOpen] = useState(true)
+
   if (rows.length === 0) return null
+
   return (
-    <div className="mt-3 space-y-1.5 border-t border-border/60 pt-2.5">
-      {rows.map((row) => (
-        <div
-          key={row.key}
-          className="flex items-baseline justify-between gap-3 text-xs leading-tight"
-        >
-          <span className="min-w-0 truncate text-muted-foreground">{row.label}</span>
-          <span
-            className={cn('shrink-0 font-medium tabular-nums', {
-              'text-success': row.tone === 'success',
-              'text-destructive': row.tone === 'destructive',
-              'text-foreground/80': !row.tone || row.tone === 'default',
-            })}
-          >
-            {row.loading ? '…' : row.value}
-          </span>
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center gap-1 rounded-md py-1 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+      >
+        <span>Detalle</span>
+        <span className="tabular-nums text-muted-foreground/80">({rows.length})</span>
+        <ChevronDown
+          className={cn(
+            'ml-auto h-3.5 w-3.5 transition-transform duration-200',
+            open ? 'rotate-0' : '-rotate-90',
+          )}
+        />
+      </button>
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows] duration-200 ease-out',
+          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="space-y-1.5 border-t border-border/60 pt-2">
+            {rows.map((row) => (
+              <div
+                key={row.key}
+                className="flex items-baseline justify-between gap-3 text-xs leading-tight"
+              >
+                <span className="min-w-0 truncate text-muted-foreground">{row.label}</span>
+                <span
+                  className={cn('shrink-0 font-medium tabular-nums', {
+                    'text-success': row.tone === 'success',
+                    'text-destructive': row.tone === 'destructive',
+                    'text-foreground/80': !row.tone || row.tone === 'default',
+                  })}
+                >
+                  {row.loading ? '…' : row.value}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
+      </div>
     </div>
   )
 }

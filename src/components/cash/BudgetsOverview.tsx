@@ -1,7 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Target } from 'lucide-react'
+import { ChevronDown, Target } from 'lucide-react'
 import { useCashBudgets } from '@/hooks/useCashBudgets'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrencyFor } from '@/utils/format'
@@ -27,6 +27,7 @@ const STATUS_ORDER: Record<BudgetStatus, number> = {
 const MAX_ITEMS = 4
 
 export function BudgetsOverview() {
+  const [open, setOpen] = useState(true)
   const { data: budgets = [], isLoading } = useCashBudgets()
 
   const sorted = [...budgets].sort(
@@ -35,45 +36,75 @@ export function BudgetsOverview() {
   const visible = sorted.slice(0, MAX_ITEMS)
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-base">Presupuestos</CardTitle>
+    <section className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_1px_3px_rgba(0,0,0,0.06)]">
+      <div className="flex items-center gap-1 border-b border-border/60 bg-muted/20 px-2 py-1 sm:px-3">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="flex min-h-10 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/60"
+        >
+          <Target className="h-4 w-4 shrink-0 text-primary" />
+          <span className="text-sm font-semibold tracking-tight">Mis presupuestos</span>
+          {!isLoading && budgets.length > 0 && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium tabular-nums text-primary">
+              {budgets.length}
+            </span>
+          )}
+          <ChevronDown
+            className={cn(
+              'ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+              open ? 'rotate-0' : '-rotate-90',
+            )}
+          />
+        </button>
         <Link
           to={ROUTES.CASH_BUDGETS}
-          className="text-xs text-muted-foreground hover:text-primary"
+          className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+          onClick={(e) => e.stopPropagation()}
         >
           Ver todos
         </Link>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : budgets.length === 0 ? (
-          <div className="flex h-24 flex-col items-center justify-center gap-2 text-center">
-            <p className="text-sm text-muted-foreground">
-              Creá un presupuesto por categoría, ej. $80.000 en Alimentación este mes
-            </p>
-            <Link
-              to={ROUTES.CASH_BUDGETS}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-            >
-              <Target className="h-4 w-4" />
-              Creá tu primer presupuesto
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {visible.map((budget) => (
-              <BudgetRow key={budget.id} budget={budget} />
-            ))}
-          </div>
+      </div>
+
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows] duration-200 ease-out',
+          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
         )}
-      </CardContent>
-    </Card>
+      >
+        <div className="overflow-hidden">
+          <div className="p-2.5 sm:p-3">
+            {isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : budgets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Creá un presupuesto por categoría, ej. $80.000 en Alimentación este mes
+                </p>
+                <Link
+                  to={ROUTES.CASH_BUDGETS}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                >
+                  <Target className="h-4 w-4" />
+                  Creá tu primer presupuesto
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {visible.map((budget) => (
+                  <BudgetRow key={budget.id} budget={budget} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -100,19 +131,19 @@ function BudgetRow({ budget }: { budget: Budget }) {
   return (
     <Link
       to={ROUTES.CASH_BUDGETS}
-      className="block rounded-lg border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
+      className="block rounded-lg border border-border/70 bg-background px-2.5 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:-translate-y-px hover:border-primary/25 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{budget.name}</p>
-          <p className="truncate text-xs text-muted-foreground">
+          <p className="truncate text-xs font-medium leading-tight">{budget.name}</p>
+          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
             {scopeLabel} · {hint}
           </p>
         </div>
-        <Badge className={cn('shrink-0', meta.badgeClass)}>{meta.label}</Badge>
+        <Badge className={cn('shrink-0 text-[10px]', meta.badgeClass)}>{meta.label}</Badge>
       </div>
-      <div className="mt-2 flex items-center gap-2">
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+      <div className="mt-1.5 flex items-center gap-2">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
           <div
             className={cn('h-full rounded-full transition-all', barClass)}
             style={{ width: `${clampPercent(analysis.percentUsed)}%` }}
@@ -120,7 +151,7 @@ function BudgetRow({ budget }: { budget: Budget }) {
         </div>
         <span
           className={cn(
-            'shrink-0 text-xs font-semibold',
+            'shrink-0 text-[11px] font-semibold tabular-nums',
             analysis.overspent ? 'text-destructive' : 'text-muted-foreground',
           )}
         >
