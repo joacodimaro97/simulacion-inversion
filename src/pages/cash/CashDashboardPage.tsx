@@ -8,6 +8,7 @@ import { useCashCategories } from '@/hooks/useCashCategories'
 import { useAccountSummaries } from '@/hooks/useAccountSummaries'
 import { AccountsSummary } from '@/components/cash/AccountsSummary'
 import { BudgetsOverview } from '@/components/cash/BudgetsOverview'
+import { IntentBadge } from '@/components/cash/IntentBadge'
 import { QuickTransactionModal } from '@/components/cash/QuickTransactionModal'
 import { TransferModal } from '@/components/cash/TransferModal'
 import { FundingModal } from '@/components/cash/FundingModal'
@@ -24,6 +25,7 @@ import { Badge } from '@/components/ui/badge'
 import { MetricCardSkeleton, ChartSkeleton, PageHeaderSkeleton } from '@/components/ui/skeleton'
 import { formatCurrency, formatCurrencyFor, formatDate } from '@/utils/format'
 import { formatCategoryLabel } from '@/utils/cashCategories'
+import { isUsdCurrency, toArs, useUsdExchangeRate } from '@/utils/exchangeRate'
 import { ROUTES } from '@/constants'
 import { cn } from '@/utils/cn'
 import type { CashTransactionType } from '@/types/cash'
@@ -67,6 +69,7 @@ export function CashDashboardPage() {
     [year, month, cashAccountId],
   )
 
+  const [usdRate] = useUsdExchangeRate()
   const { data: accounts = [], isLoading: accountsLoading } = useCashAccounts()
   const accountIds = useMemo(() => accounts.map((a) => a.id), [accounts])
   const accountSummaryQueries = useAccountSummaries(accountIds)
@@ -108,6 +111,48 @@ export function CashDashboardPage() {
     () => accounts.find((a) => a.id === cashAccountId),
     [accounts, cashAccountId],
   )
+
+  const needsFxAggregation = !cashAccountId && accounts.some((a) => isUsdCurrency(a.currency))
+
+  /** KPIs en ARS: si hay cuentas USD y no hay filtro, sumamos por cuenta con cotización. */
+  const displayTotals = useMemo(() => {
+    if (!summary) return null
+    if (!needsFxAggregation) {
+      return {
+        openingBalance: summary.openingBalance,
+        totalIncome: summary.totalIncome,
+        totalExpenseNet: summary.totalExpenseNet,
+        totalReimbursed: summary.totalReimbursed,
+        balance: summary.balance,
+      }
+    }
+
+    return accounts.reduce(
+      (acc, account) => {
+        const idx = accounts.findIndex((a) => a.id === account.id)
+        const period = accountPeriodSummaryQueries[idx]?.data
+        if (!period) return acc
+        const currency = account.currency
+        return {
+          openingBalance:
+            acc.openingBalance + toArs(period.openingBalance, currency, usdRate),
+          totalIncome: acc.totalIncome + toArs(period.totalIncome, currency, usdRate),
+          totalExpenseNet:
+            acc.totalExpenseNet + toArs(period.totalExpenseNet, currency, usdRate),
+          totalReimbursed:
+            acc.totalReimbursed + toArs(period.totalReimbursed, currency, usdRate),
+          balance: acc.balance + toArs(period.balance, currency, usdRate),
+        }
+      },
+      {
+        openingBalance: 0,
+        totalIncome: 0,
+        totalExpenseNet: 0,
+        totalReimbursed: 0,
+        balance: 0,
+      },
+    )
+  }, [summary, needsFxAggregation, accounts, accountPeriodSummaryQueries, usdRate])
 
   const expenseParents = useMemo(
     () => (summary?.byParentCategory ?? []).filter((c) => c.type === 'EXPENSE'),
@@ -252,8 +297,22 @@ export function CashDashboardPage() {
             </div>
             <ChartSkeleton />
           </>
-        ) : summary ? (
+        ) : summary && displayTotals ? (
           <>
+            {needsFxAggregation && usdRate == null && (
+              <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+                Tenés cuentas en USD.{' '}
+                <Link to={ROUTES.SETTINGS} className="font-medium underline underline-offset-2">
+                  Configurá la cotización del dólar
+                </Link>{' '}
+                para que el balance total se convierta a pesos.
+              </p>
+            )}
+            {needsFxAggregation && usdRate != null && (
+              <p className="text-xs text-muted-foreground">
+                Totales en ARS con cotización 1 USD = {usdRate.toLocaleString('es-AR')} ARS
+              </p>
+            )}
             <div
               className={cn(
                 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4 transition-opacity',
@@ -262,7 +321,7 @@ export function CashDashboardPage() {
             >
               <MetricCard
                 title="Saldo inicial"
-                value={formatCurrency(summary.openingBalance)}
+                value={formatCurrency(displayTotals.openingBalance)}
                 icon={Landmark}
                 subtitle={
                   <KpiBreakdown
@@ -277,7 +336,7 @@ export function CashDashboardPage() {
               />
               <MetricCard
                 title="Ingresos"
-                value={formatCurrency(summary.totalIncome)}
+                value={formatCurrency(displayTotals.totalIncome)}
                 icon={ArrowDownLeft}
                 trend="up"
                 subtitle={
@@ -295,18 +354,18 @@ export function CashDashboardPage() {
               />
               <MetricCard
                 title="Gastos netos"
-                value={formatCurrency(summary.totalExpenseNet)}
+                value={formatCurrency(displayTotals.totalExpenseNet)}
                 icon={ArrowUpRight}
                 trend="down"
                 subtitle={
                   <KpiBreakdown
                     rows={[
-                      ...(summary.totalReimbursed > 0
+                      ...(displayTotals.totalReimbursed > 0
                         ? [
                             {
                               key: 'reimbursed',
                               label: 'Reintegros vinculados',
-                              value: formatCurrency(summary.totalReimbursed),
+                              value: formatCurrency(displayTotals.totalReimbursed),
                               tone: 'success' as const,
                             },
                           ]
@@ -325,9 +384,9 @@ export function CashDashboardPage() {
               />
               <MetricCard
                 title="Balance"
-                value={formatCurrency(summary.balance)}
+                value={formatCurrency(displayTotals.balance)}
                 icon={Scale}
-                trend={summary.balance >= 0 ? 'up' : 'down'}
+                trend={displayTotals.balance >= 0 ? 'up' : 'down'}
                 subtitle={
                   <KpiBreakdown
                     rows={balanceBreakdown.map(({ account, balance, loading }) => ({
@@ -350,8 +409,8 @@ export function CashDashboardPage() {
             >
               <ChartCard title="Ingresos vs gastos">
                 <CashIncomeExpenseChart
-                  totalIncome={summary.totalIncome}
-                  totalExpense={summary.totalExpenseNet}
+                  totalIncome={displayTotals.totalIncome}
+                  totalExpense={displayTotals.totalExpenseNet}
                 />
               </ChartCard>
               <ChartCard title="Detalle por categoría y subcategoría">
@@ -425,9 +484,12 @@ export function CashDashboardPage() {
                       ) : isCredit ? (
                         <Badge variant="outline">Crédito</Badge>
                       ) : (
-                        <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
-                          {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
-                        </Badge>
+                        <div className="flex flex-wrap justify-end gap-1">
+                          <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
+                            {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
+                          </Badge>
+                          <IntentBadge transaction={tx} />
+                        </div>
                       )}
                       <span
                         className={cn(
@@ -440,7 +502,10 @@ export function CashDashboardPage() {
                         )}
                       >
                         {!isTransfer && !isCredit && (tx.type === 'INCOME' ? '+' : '-')}
-                        {formatCurrency(tx.amount)}
+                        {formatCurrencyFor(
+                          tx.amount,
+                          accounts.find((a) => a.id === tx.cashAccountId)?.currency,
+                        )}
                       </span>
                     </div>
                   </div>

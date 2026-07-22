@@ -1,4 +1,5 @@
 export const AUTH_TOKEN_KEY = 'fci_auth_token'
+export const USD_EXCHANGE_RATE_KEY = 'fci_usd_ars_rate'
 
 export const ROUTES = {
   LOGIN: '/login',

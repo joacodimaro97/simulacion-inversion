@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Dialog } from '@/components/ui/dialog'
 import { CategorySubcategoryFields } from '@/components/cash/CategorySubcategoryFields'
+import { IntentSelector } from '@/components/cash/IntentSelector'
 import { ReimbursementFields } from '@/components/cash/ReimbursementFields'
 import { TransactionTypeToggle } from '@/components/cash/TransactionTypeToggle'
 import {
@@ -17,8 +18,9 @@ import {
   isCategorySelectionValid,
   resolveTransactionCategoryId,
 } from '@/utils/cashCategories'
+import { DEFAULT_EXPENSE_INTENT } from '@/utils/cashIntent'
 import { todayISO } from '@/utils/format'
-import type { CashTransactionType } from '@/types/cash'
+import type { CashTransactionIntent, CashTransactionType } from '@/types/cash'
 
 interface QuickTransactionModalProps {
   open: boolean
@@ -34,6 +36,7 @@ interface QuickForm {
   subcategoryId: string
   isReimbursement: boolean
   relatedExpenseId: string
+  intent: CashTransactionIntent
   amount: string
   date: string
   description: string
@@ -63,6 +66,7 @@ export function QuickTransactionModal({
       subcategoryId: '',
       isReimbursement: false,
       relatedExpenseId: '',
+      intent: DEFAULT_EXPENSE_INTENT,
       amount: '',
       date: todayISO(),
       description: '',
@@ -74,11 +78,13 @@ export function QuickTransactionModal({
   register('relatedExpenseId')
   register('parentCategoryId')
   register('subcategoryId')
+  register('intent')
 
   const formType = watch('type')
   const parentCategoryId = watch('parentCategoryId')
   const subcategoryId = watch('subcategoryId')
   const isReimbursement = watch('isReimbursement')
+  const intent = watch('intent')
   const isLinkedIncome = formType === 'INCOME' && isReimbursement
   const { data: categories = [] } = useCashCategories({ type: formType })
   const { data: expenseCategories = [] } = useCashCategories({ type: 'EXPENSE' })
@@ -117,6 +123,7 @@ export function QuickTransactionModal({
       subcategoryId: firstSubcategoryId,
       isReimbursement: false,
       relatedExpenseId: '',
+      intent: DEFAULT_EXPENSE_INTENT,
       amount: '',
       date: todayISO(),
       description: '',
@@ -139,6 +146,9 @@ export function QuickTransactionModal({
       setValue('isReimbursement', false, { shouldDirty: true })
       setValue('relatedExpenseId', '', { shouldDirty: true })
     }
+    if (type === 'EXPENSE') {
+      setValue('intent', DEFAULT_EXPENSE_INTENT, { shouldDirty: true })
+    }
   }
 
   const onSubmit = async (data: QuickForm) => {
@@ -156,6 +166,7 @@ export function QuickTransactionModal({
         data.type === 'INCOME' && data.isReimbursement && data.relatedExpenseId
           ? data.relatedExpenseId
           : undefined,
+      ...(data.type === 'EXPENSE' ? { intent: data.intent } : {}),
     })
     onClose()
   }
@@ -246,6 +257,13 @@ export function QuickTransactionModal({
             {...register('description')}
           />
         </div>
+
+        {formType === 'EXPENSE' && (
+          <IntentSelector
+            value={intent}
+            onChange={(next) => setValue('intent', next, { shouldDirty: true })}
+          />
+        )}
 
         {formType === 'INCOME' && (
           <ReimbursementFields

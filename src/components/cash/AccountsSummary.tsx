@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { PiggyBank } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrencyFor } from '@/utils/format'
 import { ROUTES } from '@/constants'
 import { cn } from '@/utils/cn'
 import type { CashAccount } from '@/types/cash'
@@ -56,7 +56,7 @@ export function AccountsSummary({ items }: AccountsSummaryProps) {
                     balance >= 0 ? 'text-foreground' : 'text-destructive',
                   )}
                 >
-                  {formatCurrency(balance)}
+                  {formatCurrencyFor(balance, account.currency)}
                 </p>
               )}
             </div>

@@ -24,7 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { PageHeaderSkeleton, TableSkeleton, Skeleton } from '@/components/ui/skeleton'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrencyFor } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { CashAccount, FundingType } from '@/types/cash'
 
@@ -266,11 +266,11 @@ export function CashAccountsPage() {
                           <Skeleton className="ml-auto h-5 w-20" />
                         ) : (
                           <p className={cn('text-sm font-semibold', balance >= 0 ? '' : 'text-destructive')}>
-                            {formatCurrency(balance)}
+                            {formatCurrencyFor(balance, account.currency)}
                           </p>
                         )}
                         <p className="text-[10px] text-muted-foreground">
-                          Inicial: {formatCurrency(account.openingBalance ?? 0)}
+                          Inicial: {formatCurrencyFor(account.openingBalance ?? 0, account.currency)}
                         </p>
                       </div>
                     </div>
@@ -336,13 +336,13 @@ export function CashAccountsPage() {
                       {account.description || '-'}
                     </TableCell>
                     <TableCell>{account.currency}</TableCell>
-                    <TableCell>{formatCurrency(account.openingBalance ?? 0)}</TableCell>
+                    <TableCell>{formatCurrencyFor(account.openingBalance ?? 0, account.currency)}</TableCell>
                     <TableCell>
                       {loading ? (
                         <Skeleton className="h-5 w-20" />
                       ) : (
                         <span className={cn('font-semibold', balance >= 0 ? '' : 'text-destructive')}>
-                          {formatCurrency(balance)}
+                          {formatCurrencyFor(balance, account.currency)}
                         </span>
                       )}
                     </TableCell>

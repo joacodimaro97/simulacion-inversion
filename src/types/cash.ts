@@ -1,5 +1,12 @@
 export type CashTransactionType = 'INCOME' | 'EXPENSE'
 
+export type CashTransactionIntent =
+  | 'NECESIDAD'
+  | 'CUIDADO'
+  | 'GUSTO'
+  | 'IMPULSO'
+  | 'REVISAR'
+
 export interface CashAccount {
   id: string
   userId: string
@@ -71,6 +78,8 @@ export interface CashTransaction {
   amount: number
   date: string
   description: string | null
+  /** Solo aplica a gastos editables; en ingresos / sistema suele ser null. */
+  intent: CashTransactionIntent | null
   transferId: string | null
   fundingId: string | null
   /** Presente si la transacción fue generada al pagar una cuota de crédito. */
@@ -87,6 +96,8 @@ export interface CreateCashTransactionInput {
   date: string
   description?: string
   relatedExpenseId?: string
+  /** Solo para EXPENSE. Si se omite, el backend usa REVISAR. */
+  intent?: CashTransactionIntent
 }
 
 export interface UpdateCashTransactionInput {
@@ -97,6 +108,7 @@ export interface UpdateCashTransactionInput {
   date?: string
   description?: string | null
   relatedExpenseId?: string | null
+  intent?: CashTransactionIntent | null
 }
 
 export interface CashTransactionQuery {
@@ -104,6 +116,7 @@ export interface CashTransactionQuery {
   categoryId?: string
   categoryIds?: string[]
   type?: CashTransactionType
+  intent?: CashTransactionIntent
   startDate?: string
   endDate?: string
   excludeTransfers?: boolean

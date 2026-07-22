@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Loader2, Send, UserRound } from 'lucide-react'
+import { DollarSign, Loader2, Send, UserRound } from 'lucide-react'
 import { queryKeys } from '@/constants'
 import { useAuth } from '@/contexts/AuthContext'
 import {
@@ -11,8 +11,12 @@ import {
 } from '@/hooks/useTelegram'
 import { AuthService } from '@/services/AuthService'
 import { TelegramService } from '@/services/TelegramService'
+import { useUsdExchangeRate } from '@/utils/exchangeRate'
+import { parseLocalNumber } from '@/utils/format'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Card,
   CardContent,
@@ -31,11 +35,20 @@ export function SettingsPage() {
   const linkTelegram = useLinkTelegram()
   const unlinkTelegram = useUnlinkTelegram()
   const refreshStatus = useRefreshTelegramStatus()
+  const [usdRate, setUsdRate] = useUsdExchangeRate()
+  const [rateInput, setRateInput] = useState(() =>
+    usdRate != null ? String(usdRate) : '',
+  )
+  const [rateSaved, setRateSaved] = useState(false)
 
   const [awaitingLink, setAwaitingLink] = useState(false)
   const [polling, setPolling] = useState(false)
   const [confirmUnlink, setConfirmUnlink] = useState(false)
   const pollDeadlineRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    setRateInput(usdRate != null ? String(usdRate) : '')
+  }, [usdRate])
 
   const linked = status?.linked ?? user?.telegramLinked ?? false
 
@@ -100,6 +113,19 @@ export function SettingsPage() {
     setPolling(false)
   }
 
+  const handleSaveRate = () => {
+    const parsed = parseLocalNumber(rateInput)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setUsdRate(null)
+      setRateInput('')
+    } else {
+      setUsdRate(parsed)
+      setRateInput(String(parsed))
+    }
+    setRateSaved(true)
+    window.setTimeout(() => setRateSaved(false), 2000)
+  }
+
   return (
     <div className="space-y-6 animate-in">
       <div>
@@ -118,6 +144,50 @@ export function SettingsPage() {
         <CardContent className="space-y-1">
           <p className="text-sm font-medium text-foreground">{user?.name}</p>
           <p className="text-sm text-muted-foreground">{user?.email}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle>Cotización del dólar</CardTitle>
+          </div>
+          <CardDescription>
+            Valor USD → ARS para convertir cuentas en dólares al calcular balances totales
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2 max-w-xs">
+            <Label htmlFor="usd-rate">1 USD = … ARS</Label>
+            <div className="flex gap-2">
+              <Input
+                id="usd-rate"
+                type="text"
+                inputMode="decimal"
+                placeholder="Ej: 1400"
+                value={rateInput}
+                onChange={(e) => setRateInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveRate()
+                }}
+              />
+              <Button type="button" onClick={handleSaveRate}>
+                Guardar
+              </Button>
+            </div>
+          </div>
+          {rateSaved ? (
+            <p className="text-sm text-success">Cotización guardada.</p>
+          ) : usdRate != null ? (
+            <p className="text-sm text-muted-foreground">
+              Actual: 1 USD = {usdRate.toLocaleString('es-AR')} ARS
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Sin cotización. Los totales con cuentas en USD no se convertirán.
+            </p>
+          )}
         </CardContent>
       </Card>
 

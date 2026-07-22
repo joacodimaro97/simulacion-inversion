@@ -53,6 +53,7 @@ import { MetricCardSkeleton, PageHeaderSkeleton, Skeleton, TableSkeleton } from 
 import { ROUTES } from '@/constants'
 import { cn } from '@/utils/cn'
 import { formatCurrencyFor, formatDate, todayISO } from '@/utils/format'
+import { toArs, useUsdExchangeRate } from '@/utils/exchangeRate'
 import type {
   CalendarInstallmentItem,
   CreditDirection,
@@ -237,19 +238,20 @@ export function CreditsPage() {
     () => nextMonthItems.filter((i) => i.status === 'PENDING'),
     [nextMonthItems],
   )
+  const [usdRate] = useUsdExchangeRate()
   const nextMonthOwedByMe = useMemo(
     () =>
       nextMonthPending
         .filter((i) => i.direction === 'OWED_BY_ME')
-        .reduce((sum, i) => sum + i.amount, 0),
-    [nextMonthPending],
+        .reduce((sum, i) => sum + toArs(i.amount, i.currency, usdRate), 0),
+    [nextMonthPending, usdRate],
   )
   const nextMonthOwedToMe = useMemo(
     () =>
       nextMonthPending
         .filter((i) => i.direction === 'OWED_TO_ME')
-        .reduce((sum, i) => sum + i.amount, 0),
-    [nextMonthPending],
+        .reduce((sum, i) => sum + toArs(i.amount, i.currency, usdRate), 0),
+    [nextMonthPending, usdRate],
   )
   const { data: credit, isLoading: detailLoading } = useCredit(
     view === 'detail' ? creditId : undefined,

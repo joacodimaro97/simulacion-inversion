@@ -2,14 +2,21 @@ import { useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { getCategories, getSubcategories } from '@/utils/cashCategories'
+import { CASH_TRANSACTION_INTENTS, INTENT_LABELS } from '@/utils/cashIntent'
 import { cn } from '@/utils/cn'
-import type { CashTransactionQuery, CashTransactionType, Category } from '@/types/cash'
+import type {
+  CashTransactionIntent,
+  CashTransactionQuery,
+  CashTransactionType,
+  Category,
+} from '@/types/cash'
 
 export interface TransactionFilters {
   cashAccountId: string
   parentCategoryId: string
   subcategoryIds: string[]
   type: '' | CashTransactionType
+  intent: '' | CashTransactionIntent
   startDate: string
   endDate: string
   hideSystemMovements: boolean
@@ -50,7 +57,12 @@ export function CashTransactionFilters({
   )
 
   const handleTypeChange = (type: TransactionFilters['type']) => {
-    onChange({ type, parentCategoryId: '', subcategoryIds: [] })
+    onChange({
+      type,
+      parentCategoryId: '',
+      subcategoryIds: [],
+      ...(type === 'INCOME' ? { intent: '' } : {}),
+    })
   }
 
   const handleParentChange = (parentCategoryId: string) => {
@@ -93,6 +105,24 @@ export function CashTransactionFilters({
           <option value="INCOME">Ingreso</option>
           <option value="EXPENSE">Gasto</option>
         </Select>
+
+        {filters.type !== 'INCOME' && (
+          <Select
+            aria-label="Intención (opcional)"
+            value={filters.intent}
+            onChange={(e) =>
+              onChange({ intent: e.target.value as TransactionFilters['intent'] })
+            }
+            className={`${selectClass} sm:w-[9.5rem]`}
+          >
+            <option value="">Toda intención (opcional)</option>
+            {CASH_TRANSACTION_INTENTS.map((intent) => (
+              <option key={intent} value={intent}>
+                {INTENT_LABELS[intent]}
+              </option>
+            ))}
+          </Select>
+        )}
 
         <Select
           aria-label="Categoría"

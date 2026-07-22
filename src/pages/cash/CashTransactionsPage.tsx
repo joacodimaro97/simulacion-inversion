@@ -38,18 +38,21 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { MetricCardSkeleton, PageHeaderSkeleton, TableSkeleton } from '@/components/ui/skeleton'
-import { formatCurrency, formatDate, todayISO } from '@/utils/format'
+import { formatCurrency, formatCurrencyFor, formatDate, todayISO } from '@/utils/format'
 import { formatCategoryLabel, isCategorySelectionValid, resolveTransactionCategoryId, splitCategorySelection } from '@/utils/cashCategories'
 import { CashTransactionFilters, resolveFilterCategoryParams, type TransactionFilters } from '@/components/cash/CashTransactionFilters'
 import { CategorySubcategoryFields } from '@/components/cash/CategorySubcategoryFields'
+import { IntentBadge } from '@/components/cash/IntentBadge'
+import { IntentSelector } from '@/components/cash/IntentSelector'
 import { QuickTransactionModal } from '@/components/cash/QuickTransactionModal'
 import { ReimbursementFields } from '@/components/cash/ReimbursementFields'
 import { TransactionTypeToggle } from '@/components/cash/TransactionTypeToggle'
 import { TransactionWeeklyBreakdown } from '@/components/cash/TransactionWeeklyBreakdown'
 import { Pagination } from '@/components/ui/pagination'
 import { cn } from '@/utils/cn'
+import { DEFAULT_EXPENSE_INTENT } from '@/utils/cashIntent'
 import { ROUTES } from '@/constants'
-import type { CashTransaction, CashTransactionType } from '@/types/cash'
+import type { CashTransaction, CashTransactionIntent, CashTransactionType } from '@/types/cash'
 
 const PAGE_SIZE = 10
 
@@ -98,6 +101,7 @@ interface TransactionForm {
   subcategoryId: string
   isReimbursement: boolean
   relatedExpenseId: string
+  intent: CashTransactionIntent
   amount: string
   date: string
   description: string
@@ -109,6 +113,7 @@ export function CashTransactionsPage() {
     parentCategoryId: '',
     subcategoryIds: [],
     type: '',
+    intent: '',
     startDate: '',
     endDate: '',
     hideSystemMovements: true,
@@ -123,6 +128,7 @@ export function CashTransactionsPage() {
       ...(filters.cashAccountId ? { cashAccountId: filters.cashAccountId } : {}),
       ...categoryParams,
       ...(filters.type ? { type: filters.type } : {}),
+      ...(filters.intent && filters.type !== 'INCOME' ? { intent: filters.intent } : {}),
       ...(filters.startDate ? { startDate: filters.startDate } : {}),
       ...(filters.endDate ? { endDate: filters.endDate } : {}),
       ...(filters.hideSystemMovements
@@ -155,6 +161,7 @@ export function CashTransactionsPage() {
       subcategoryId: '',
       isReimbursement: false,
       relatedExpenseId: '',
+      intent: DEFAULT_EXPENSE_INTENT,
       amount: '',
       date: todayISO(),
       description: '',
@@ -167,11 +174,13 @@ export function CashTransactionsPage() {
   register('relatedExpenseId')
   register('parentCategoryId')
   register('subcategoryId')
+  register('intent')
 
   const formType = watch('type')
   const parentCategoryId = watch('parentCategoryId')
   const subcategoryId = watch('subcategoryId')
   const isReimbursement = watch('isReimbursement')
+  const intent = watch('intent')
   const isLinkedIncome = formType === 'INCOME' && isReimbursement
   const formCategories = useMemo(
     () => allCategories.filter((c) => c.type === formType),
@@ -237,6 +246,7 @@ export function CashTransactionsPage() {
       subcategoryId: subId,
       isReimbursement: Boolean(tx.relatedExpenseId),
       relatedExpenseId: tx.relatedExpenseId ?? '',
+      intent: tx.intent ?? DEFAULT_EXPENSE_INTENT,
       amount: String(tx.amount),
       date: tx.date.split('T')[0] ?? tx.date,
       description: tx.description ?? '',
@@ -255,6 +265,7 @@ export function CashTransactionsPage() {
       subcategoryId: '',
       isReimbursement: false,
       relatedExpenseId: '',
+      intent: DEFAULT_EXPENSE_INTENT,
       amount: '',
       date: todayISO(),
       description: '',
@@ -282,7 +293,11 @@ export function CashTransactionsPage() {
     if (editing) {
       await updateTx.mutateAsync({
         id: editing.id,
-        input: { ...basePayload, relatedExpenseId },
+        input: {
+          ...basePayload,
+          relatedExpenseId,
+          intent: data.type === 'EXPENSE' ? data.intent : null,
+        },
       })
       cancelEdit()
       return
@@ -291,6 +306,7 @@ export function CashTransactionsPage() {
     await createTx.mutateAsync({
       ...basePayload,
       relatedExpenseId: relatedExpenseId ?? undefined,
+      ...(data.type === 'EXPENSE' ? { intent: data.intent } : {}),
     })
     reset({
       cashAccountId: data.cashAccountId,
@@ -299,6 +315,7 @@ export function CashTransactionsPage() {
       subcategoryId: data.subcategoryId,
       isReimbursement: false,
       relatedExpenseId: '',
+      intent: data.type === 'EXPENSE' ? data.intent : DEFAULT_EXPENSE_INTENT,
       amount: '',
       date: todayISO(),
       description: '',
@@ -346,6 +363,9 @@ export function CashTransactionsPage() {
                 if (type !== 'INCOME') {
                   setValue('isReimbursement', false, { shouldDirty: true })
                   setValue('relatedExpenseId', '', { shouldDirty: true })
+                }
+                if (type === 'EXPENSE') {
+                  setValue('intent', DEFAULT_EXPENSE_INTENT, { shouldDirty: true })
                 }
               }}
             />
@@ -408,6 +428,13 @@ export function CashTransactionsPage() {
                 />
               </div>
             </div>
+
+            {formType === 'EXPENSE' && (
+              <IntentSelector
+                value={intent}
+                onChange={(next) => setValue('intent', next, { shouldDirty: true })}
+              />
+            )}
 
             {formType === 'INCOME' && (
               <ReimbursementFields
@@ -560,9 +587,12 @@ export function CashTransactionsPage() {
                             {isSystemTransaction(tx) ? (
                               <SystemBadge tx={tx} />
                             ) : (
-                              <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
-                                {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
-                              </Badge>
+                              <div className="flex flex-wrap justify-end gap-1">
+                                <Badge variant={tx.type === 'INCOME' ? 'success' : 'destructive'}>
+                                  {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
+                                </Badge>
+                                <IntentBadge transaction={tx} />
+                              </div>
                             )}
                             <span
                               className={cn(
@@ -575,7 +605,10 @@ export function CashTransactionsPage() {
                               )}
                             >
                               {!isSystemTransaction(tx) && (tx.type === 'INCOME' ? '+' : '-')}
-                              {formatCurrency(tx.amount)}
+                              {formatCurrencyFor(
+                                tx.amount,
+                                accounts.find((a) => a.id === tx.cashAccountId)?.currency,
+                              )}
                             </span>
                           </div>
                         </div>
@@ -613,6 +646,7 @@ export function CashTransactionsPage() {
                 <TableRow>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Intención (opcional)</TableHead>
                   <TableHead>Categoría</TableHead>
                   <TableHead>Cuenta</TableHead>
                   <TableHead>Monto</TableHead>
@@ -632,6 +666,9 @@ export function CashTransactionsPage() {
                             {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <IntentBadge transaction={tx} />
                       </TableCell>
                       <TableCell>
                         {(() => {
@@ -655,7 +692,10 @@ export function CashTransactionsPage() {
                         )}
                       >
                         {!isSystemTransaction(tx) && (tx.type === 'INCOME' ? '+' : '-')}
-                        {formatCurrency(tx.amount)}
+                        {formatCurrencyFor(
+                          tx.amount,
+                          accounts.find((a) => a.id === tx.cashAccountId)?.currency,
+                        )}
                       </TableCell>
                       <TableCell className="max-w-40 truncate text-muted-foreground">
                         {tx.description || '-'}
