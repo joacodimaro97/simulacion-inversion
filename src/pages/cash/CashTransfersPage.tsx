@@ -21,8 +21,42 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { PageHeaderSkeleton, TableSkeleton } from '@/components/ui/skeleton'
-import { formatCurrency, formatDate } from '@/utils/format'
+import { formatCurrencyFor, formatDate } from '@/utils/format'
 import { cn } from '@/utils/cn'
+import type { CashTransfer } from '@/types/cash'
+
+function formatRate(rate: number): string {
+  return rate.toLocaleString('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: rate >= 1 ? 4 : 8,
+  })
+}
+
+function TransferAmounts({ transfer }: { transfer: CashTransfer }) {
+  const { amount, toAmount, exchangeRate, fromAccount, toAccount } = transfer
+  const cross =
+    fromAccount.currency.toUpperCase() !== toAccount.currency.toUpperCase() ||
+    exchangeRate != null
+
+  return (
+    <div className="space-y-0.5">
+      <p className="text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+        {formatCurrencyFor(amount, fromAccount.currency)}
+        {cross ? (
+          <>
+            <span className="mx-1 font-normal text-muted-foreground">→</span>
+            {formatCurrencyFor(toAmount, toAccount.currency)}
+          </>
+        ) : null}
+      </p>
+      {exchangeRate != null && (
+        <p className="text-[11px] text-muted-foreground">
+          tc {formatRate(exchangeRate)} {toAccount.currency}/{fromAccount.currency}
+        </p>
+      )}
+    </div>
+  )
+}
 
 export function CashTransfersPage() {
   const [modalOpen, setModalOpen] = useState(false)
@@ -141,19 +175,25 @@ export function CashTransfersPage() {
                         <div className="flex items-center gap-2">
                           <ArrowLeftRight className="h-4 w-4 shrink-0 text-slate-500" />
                           <p className="text-sm font-medium">
-                            {t.fromAccount.name} → {t.toAccount.name}
+                            {t.fromAccount.name}
+                            <span className="mx-1 text-muted-foreground">→</span>
+                            {t.toAccount.name}
                           </p>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {formatDate(t.date)}
+                          <span className="text-muted-foreground/80">
+                            {' '}
+                            · {t.fromAccount.currency} → {t.toAccount.currency}
+                          </span>
                         </p>
                         {t.description && (
                           <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>
                         )}
                       </div>
-                      <span className="shrink-0 text-sm font-semibold text-slate-600">
-                        {formatCurrency(t.amount)}
-                      </span>
+                      <div className="shrink-0 text-right">
+                        <TransferAmounts transfer={t} />
+                      </div>
                     </div>
                     <div className="mt-3 border-t pt-3">
                       <Button
@@ -193,12 +233,13 @@ export function CashTransfersPage() {
                             Transferencia
                           </Badge>
                           <span className="text-sm">
-                            De {t.fromAccount.name} → {t.toAccount.name}
+                            De {t.fromAccount.name} ({t.fromAccount.currency}) →{' '}
+                            {t.toAccount.name} ({t.toAccount.currency})
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="font-semibold text-slate-600">
-                        {formatCurrency(t.amount)}
+                      <TableCell>
+                        <TransferAmounts transfer={t} />
                       </TableCell>
                       <TableCell className="max-w-40 truncate text-muted-foreground">
                         {t.description || '-'}

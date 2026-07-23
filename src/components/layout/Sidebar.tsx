@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Menu,
   Settings,
+  PieChart,
 } from 'lucide-react'
 import { ROUTES } from '@/constants'
 import { cn } from '@/utils/cn'
@@ -33,6 +34,7 @@ const investmentItems = [
 
 const cashItems = [
   { to: ROUTES.CASH, label: 'Resumen', icon: Wallet },
+  { to: ROUTES.CASH_REPORTS, label: 'Reportes', icon: PieChart },
   { to: ROUTES.CASH_TRANSACTIONS, label: 'Transacciones', icon: Receipt },
   { to: ROUTES.CREDITS, label: 'Créditos', icon: CreditCard },
   { to: ROUTES.CASH_BUDGETS, label: 'Presupuestos', icon: Target },

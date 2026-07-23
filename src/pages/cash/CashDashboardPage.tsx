@@ -1,6 +1,19 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDownLeft, ArrowUpRight, Wallet, Scale, Landmark, Plus, ArrowLeftRight, ChevronDown, LayoutDashboard, CalendarDays, DollarSign } from 'lucide-react'
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Wallet,
+  Scale,
+  Landmark,
+  Plus,
+  ArrowLeftRight,
+  ChevronDown,
+  LayoutDashboard,
+  CalendarDays,
+  DollarSign,
+  PieChart,
+} from 'lucide-react'
 import { useCashAccounts } from '@/hooks/useCashAccounts'
 import { useCashSummary } from '@/hooks/useCashSummary'
 import { useCashTransactions } from '@/hooks/useCashTransactions'
@@ -15,14 +28,10 @@ import { FundingModal } from '@/components/cash/FundingModal'
 import { CashPeriodFilters } from '@/components/cash/CashPeriodFilters'
 import { Button } from '@/components/ui/button'
 import { MetricCard } from '@/components/common/MetricCard'
-import { ChartCard } from '@/components/common/ChartCard'
 import { EmptyState } from '@/components/common/EmptyState'
-import { CashCategoryChart } from '@/charts/CashCategoryChart'
-import { CashIncomeExpenseChart } from '@/charts/CashIncomeExpenseChart'
-import { CashBreakdownPieChart } from '@/charts/CashBreakdownPieChart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MetricCardSkeleton, ChartSkeleton, PageHeaderSkeleton } from '@/components/ui/skeleton'
+import { MetricCardSkeleton, PageHeaderSkeleton } from '@/components/ui/skeleton'
 import { formatCurrency, formatCurrencyFor, formatDate } from '@/utils/format'
 import { formatCategoryLabel } from '@/utils/cashCategories'
 import { isUsdCurrency, toArs, useUsdExchangeRate } from '@/utils/exchangeRate'
@@ -192,7 +201,6 @@ export function CashDashboardPage() {
             <MetricCardSkeleton key={i} />
           ))}
         </div>
-        <ChartSkeleton />
       </div>
     )
   }
@@ -240,6 +248,13 @@ export function CashDashboardPage() {
             A inversión
           </Button>
           <Link
+            to={ROUTES.CASH_REPORTS}
+            className="inline-flex h-10 flex-1 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground sm:h-8 sm:flex-none sm:text-xs"
+          >
+            <PieChart className="mr-1 h-4 w-4" />
+            Reportes
+          </Link>
+          <Link
             to={ROUTES.CASH_TRANSACTIONS}
             className="inline-flex h-10 w-full items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground sm:h-8 sm:w-auto sm:text-xs"
           >
@@ -268,242 +283,209 @@ export function CashDashboardPage() {
         onClose={() => setFundingOpen(false)}
       />
 
-      <div className="space-y-6">
-        <section className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_1px_3px_rgba(0,0,0,0.06)]">
-          <div className="flex items-center gap-1 border-b border-border/60 bg-muted/20 px-2 py-1 sm:px-3">
-            <button
-              type="button"
-              onClick={() => setKpisOpen((v) => !v)}
-              aria-expanded={kpisOpen}
-              className="flex min-h-10 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/60"
-            >
-              <LayoutDashboard className="h-4 w-4 shrink-0 text-primary" />
-              <span className="text-sm font-semibold tracking-tight">Resumen del período</span>
-              <span className="hidden truncate text-xs font-normal text-muted-foreground sm:inline">
-                · {periodLabel}
-              </span>
-              <ChevronDown
-                className={cn(
-                  'ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
-                  kpisOpen ? 'rotate-0' : '-rotate-90',
-                )}
-              />
-            </button>
-          </div>
-
-          <div
-            className={cn(
-              'grid transition-[grid-template-rows] duration-200 ease-out',
-              kpisOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
-            )}
+      <section className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_1px_3px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center gap-1 border-b border-border/60 bg-muted/20 px-2 py-1 sm:px-3">
+          <button
+            type="button"
+            onClick={() => setKpisOpen((v) => !v)}
+            aria-expanded={kpisOpen}
+            className="flex min-h-10 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/60"
           >
-            <div className="overflow-hidden">
-              <div className="space-y-3 p-2.5 sm:p-3">
-                <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/20 p-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-3">
-                  <div className="flex min-w-0 items-start gap-2.5 sm:items-center">
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/10 sm:mt-0">
-                      <CalendarDays className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="min-w-0 space-y-1">
-                      <div>
-                        <p className="text-sm font-semibold tracking-tight">Período</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {summaryFetching && !summaryLoading ? 'Actualizando… · ' : ''}
-                          {periodLabel}
-                        </p>
-                      </div>
-                      {needsFxAggregation && (
-                        <div
-                          className={cn(
-                            'inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium',
-                            usdRate == null
-                              ? 'bg-amber-500/10 text-amber-800 ring-1 ring-amber-500/30 dark:text-amber-200'
-                              : 'bg-muted text-muted-foreground ring-1 ring-border/70',
-                          )}
-                        >
-                          <DollarSign className="h-3 w-3 shrink-0" />
-                          {usdRate == null ? (
-                            <span className="min-w-0">
-                              Cotización USD pendiente ·{' '}
-                              <Link
-                                to={ROUTES.SETTINGS}
-                                className="font-semibold underline underline-offset-2"
-                              >
-                                Configurar
-                              </Link>
-                            </span>
-                          ) : (
-                            <span className="tabular-nums">
-                              1 USD = {usdRate.toLocaleString('es-AR')} ARS
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+            <LayoutDashboard className="h-4 w-4 shrink-0 text-primary" />
+            <span className="text-sm font-semibold tracking-tight">Resumen del período</span>
+            <span className="hidden truncate text-xs font-normal text-muted-foreground sm:inline">
+              · {periodLabel}
+            </span>
+            <ChevronDown
+              className={cn(
+                'ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                kpisOpen ? 'rotate-0' : '-rotate-90',
+              )}
+            />
+          </button>
+        </div>
 
-                  <CashPeriodFilters
-                    year={year}
-                    month={month}
-                    cashAccountId={cashAccountId}
-                    accounts={accounts}
-                    years={YEARS}
-                    onYearChange={setYear}
-                    onMonthChange={setMonth}
-                    onAccountChange={setCashAccountId}
-                    className="border-0 bg-transparent p-0 shadow-none"
-                  />
+        <div
+          className={cn(
+            'grid transition-[grid-template-rows] duration-200 ease-out',
+            kpisOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+          )}
+        >
+          <div className="overflow-hidden">
+            <div className="space-y-3 p-2.5 sm:p-3">
+              <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/20 p-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-3">
+                <div className="flex min-w-0 items-start gap-2.5 sm:items-center">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/10 sm:mt-0">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <div>
+                      <p className="text-sm font-semibold tracking-tight">Período</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {summaryFetching && !summaryLoading ? 'Actualizando… · ' : ''}
+                        {periodLabel}
+                      </p>
+                    </div>
+                    {needsFxAggregation && (
+                      <div
+                        className={cn(
+                          'inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                          usdRate == null
+                            ? 'bg-amber-500/10 text-amber-800 ring-1 ring-amber-500/30 dark:text-amber-200'
+                            : 'bg-muted text-muted-foreground ring-1 ring-border/70',
+                        )}
+                      >
+                        <DollarSign className="h-3 w-3 shrink-0" />
+                        {usdRate == null ? (
+                          <span className="min-w-0">
+                            Cotización USD pendiente ·{' '}
+                            <Link
+                              to={ROUTES.SETTINGS}
+                              className="font-semibold underline underline-offset-2"
+                            >
+                              Configurar
+                            </Link>
+                          </span>
+                        ) : (
+                          <span className="tabular-nums">
+                            1 USD = {usdRate.toLocaleString('es-AR')} ARS
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {summaryLoading && !summary ? (
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <MetricCardSkeleton key={i} />
-                    ))}
-                  </div>
-                ) : summary && displayTotals ? (
-                  <div
-                    className={cn(
-                      'grid gap-3 sm:grid-cols-2 lg:grid-cols-4 transition-opacity',
-                      summaryFetching && 'opacity-60',
-                    )}
-                  >
-                    <MetricCard
-                      title="Saldo inicial"
-                      value={formatCurrency(displayTotals.openingBalance)}
-                      icon={Landmark}
-                      className="shadow-none"
-                      subtitle={
-                        <KpiBreakdown
-                          rows={openingBalanceBreakdown.map(({ account, openingBalance, loading }) => ({
-                            key: account.id,
-                            label: account.name,
-                            value: formatCurrencyFor(openingBalance, account.currency),
-                            loading,
+                <CashPeriodFilters
+                  year={year}
+                  month={month}
+                  cashAccountId={cashAccountId}
+                  accounts={accounts}
+                  years={YEARS}
+                  onYearChange={setYear}
+                  onMonthChange={setMonth}
+                  onAccountChange={setCashAccountId}
+                  className="border-0 bg-transparent p-0 shadow-none"
+                />
+              </div>
+
+              {summaryLoading && !summary ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <MetricCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : summary && displayTotals ? (
+                <div
+                  className={cn(
+                    'grid gap-3 sm:grid-cols-2 lg:grid-cols-4 transition-opacity',
+                    summaryFetching && 'opacity-60',
+                  )}
+                >
+                  <MetricCard
+                    title="Saldo inicial"
+                    value={formatCurrency(displayTotals.openingBalance)}
+                    icon={Landmark}
+                    className="shadow-none"
+                    subtitle={
+                      <KpiBreakdown
+                        rows={openingBalanceBreakdown.map(({ account, openingBalance, loading }) => ({
+                          key: account.id,
+                          label: account.name,
+                          value: formatCurrencyFor(openingBalance, account.currency),
+                          loading,
+                        }))}
+                      />
+                    }
+                  />
+                  <MetricCard
+                    title="Ingresos"
+                    value={formatCurrency(displayTotals.totalIncome)}
+                    icon={ArrowDownLeft}
+                    trend="up"
+                    className="shadow-none"
+                    subtitle={
+                      <KpiBreakdown
+                        rows={[...incomeParents]
+                          .sort((a, b) => b.total - a.total)
+                          .map((item) => ({
+                            key: item.categoryId,
+                            label: item.categoryName,
+                            value: formatCurrency(item.total),
+                            tone: 'success',
                           }))}
-                        />
-                      }
-                    />
-                    <MetricCard
-                      title="Ingresos"
-                      value={formatCurrency(displayTotals.totalIncome)}
-                      icon={ArrowDownLeft}
-                      trend="up"
-                      className="shadow-none"
-                      subtitle={
-                        <KpiBreakdown
-                          rows={[...incomeParents]
+                      />
+                    }
+                  />
+                  <MetricCard
+                    title="Gastos netos"
+                    value={formatCurrency(displayTotals.totalExpenseNet)}
+                    icon={ArrowUpRight}
+                    trend="down"
+                    className="shadow-none"
+                    subtitle={
+                      <KpiBreakdown
+                        rows={[
+                          ...(displayTotals.totalReimbursed > 0
+                            ? [
+                                {
+                                  key: 'reimbursed',
+                                  label: 'Reintegros vinculados',
+                                  value: formatCurrency(displayTotals.totalReimbursed),
+                                  tone: 'success' as const,
+                                },
+                              ]
+                            : []),
+                          ...[...expenseParents]
                             .sort((a, b) => b.total - a.total)
                             .map((item) => ({
                               key: item.categoryId,
                               label: item.categoryName,
                               value: formatCurrency(item.total),
-                              tone: 'success',
-                            }))}
-                        />
-                      }
-                    />
-                    <MetricCard
-                      title="Gastos netos"
-                      value={formatCurrency(displayTotals.totalExpenseNet)}
-                      icon={ArrowUpRight}
-                      trend="down"
-                      className="shadow-none"
-                      subtitle={
-                        <KpiBreakdown
-                          rows={[
-                            ...(displayTotals.totalReimbursed > 0
-                              ? [
-                                  {
-                                    key: 'reimbursed',
-                                    label: 'Reintegros vinculados',
-                                    value: formatCurrency(displayTotals.totalReimbursed),
-                                    tone: 'success' as const,
-                                  },
-                                ]
-                              : []),
-                            ...[...expenseParents]
-                              .sort((a, b) => b.total - a.total)
-                              .map((item) => ({
-                                key: item.categoryId,
-                                label: item.categoryName,
-                                value: formatCurrency(item.total),
-                                tone: 'destructive' as const,
-                              })),
-                          ]}
-                        />
-                      }
-                    />
-                    <MetricCard
-                      title="Balance"
-                      value={formatCurrency(displayTotals.balance)}
-                      icon={Scale}
-                      trend={displayTotals.balance >= 0 ? 'up' : 'down'}
-                      className="shadow-none"
-                      subtitle={
-                        <KpiBreakdown
-                          rows={balanceBreakdown.map(({ account, balance, loading }) => ({
-                            key: account.id,
-                            label: account.name,
-                            value: formatCurrencyFor(balance, account.currency),
-                            loading,
-                            tone: balance >= 0 ? 'success' : 'destructive',
-                          }))}
-                        />
-                      }
-                    />
-                  </div>
-                ) : (
-                  <EmptyState message="No hay resumen para este período." />
-                )}
-              </div>
+                              tone: 'destructive' as const,
+                            })),
+                        ]}
+                      />
+                    }
+                  />
+                  <MetricCard
+                    title="Balance"
+                    value={formatCurrency(displayTotals.balance)}
+                    icon={Scale}
+                    trend={displayTotals.balance >= 0 ? 'up' : 'down'}
+                    className="shadow-none"
+                    subtitle={
+                      <KpiBreakdown
+                        rows={balanceBreakdown.map(({ account, balance, loading }) => ({
+                          key: account.id,
+                          label: account.name,
+                          value: formatCurrencyFor(balance, account.currency),
+                          loading,
+                          tone: balance >= 0 ? 'success' : 'destructive',
+                        }))}
+                      />
+                    }
+                  />
+                </div>
+              ) : (
+                <EmptyState message="No hay resumen para este período." />
+              )}
+
+              {summary && displayTotals ? (
+                <div className="flex justify-end">
+                  <Link
+                    to={ROUTES.CASH_REPORTS}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                  >
+                    <PieChart className="h-3.5 w-3.5" />
+                    Ver gráficos y análisis
+                  </Link>
+                </div>
+              ) : null}
             </div>
           </div>
-        </section>
-
-        {summaryLoading && !summary ? (
-          <ChartSkeleton />
-        ) : summary && displayTotals ? (
-          <>
-            <div
-              className={cn(
-                'grid gap-6 lg:grid-cols-2 transition-opacity',
-                summaryFetching && 'opacity-60',
-              )}
-            >
-              <ChartCard title="Ingresos vs gastos">
-                <CashIncomeExpenseChart
-                  totalIncome={displayTotals.totalIncome}
-                  totalExpense={displayTotals.totalExpenseNet}
-                />
-              </ChartCard>
-              <ChartCard title="Detalle por categoría y subcategoría">
-                <CashCategoryChart data={summary.byCategory} />
-              </ChartCard>
-            </div>
-
-            <div
-              className={cn(
-                'grid gap-6 lg:grid-cols-2 transition-opacity',
-                summaryFetching && 'opacity-60',
-              )}
-            >
-              <ChartCard title="Distribución de gastos">
-                <CashBreakdownPieChart
-                  data={expenseParents}
-                  emptyMessage="Sin gastos en este período"
-                />
-              </ChartCard>
-              <ChartCard title="Distribución de ingresos">
-                <CashBreakdownPieChart
-                  data={incomeParents}
-                  emptyMessage="Sin ingresos en este período"
-                />
-              </ChartCard>
-            </div>
-          </>
-        ) : null}
-      </div>
+        </div>
+      </section>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

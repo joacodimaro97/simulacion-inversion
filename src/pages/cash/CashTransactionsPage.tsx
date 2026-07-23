@@ -50,7 +50,7 @@ import { TransactionTypeToggle } from '@/components/cash/TransactionTypeToggle'
 import { TransactionWeeklyBreakdown } from '@/components/cash/TransactionWeeklyBreakdown'
 import { Pagination } from '@/components/ui/pagination'
 import { cn } from '@/utils/cn'
-import { DEFAULT_EXPENSE_INTENT } from '@/utils/cashIntent'
+import { isCashTransactionIntent } from '@/utils/cashIntent'
 import { ROUTES } from '@/constants'
 import type { CashTransaction, CashTransactionIntent, CashTransactionType } from '@/types/cash'
 
@@ -101,7 +101,7 @@ interface TransactionForm {
   subcategoryId: string
   isReimbursement: boolean
   relatedExpenseId: string
-  intent: CashTransactionIntent
+  intent: CashTransactionIntent | ''
   amount: string
   date: string
   description: string
@@ -161,7 +161,7 @@ export function CashTransactionsPage() {
       subcategoryId: '',
       isReimbursement: false,
       relatedExpenseId: '',
-      intent: DEFAULT_EXPENSE_INTENT,
+      intent: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -246,7 +246,7 @@ export function CashTransactionsPage() {
       subcategoryId: subId,
       isReimbursement: Boolean(tx.relatedExpenseId),
       relatedExpenseId: tx.relatedExpenseId ?? '',
-      intent: tx.intent ?? DEFAULT_EXPENSE_INTENT,
+      intent: isCashTransactionIntent(tx.intent) ? tx.intent : '',
       amount: String(tx.amount),
       date: tx.date.split('T')[0] ?? tx.date,
       description: tx.description ?? '',
@@ -265,7 +265,7 @@ export function CashTransactionsPage() {
       subcategoryId: '',
       isReimbursement: false,
       relatedExpenseId: '',
-      intent: DEFAULT_EXPENSE_INTENT,
+      intent: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -296,7 +296,7 @@ export function CashTransactionsPage() {
         input: {
           ...basePayload,
           relatedExpenseId,
-          intent: data.type === 'EXPENSE' ? data.intent : null,
+          intent: data.type === 'EXPENSE' ? data.intent || null : null,
         },
       })
       cancelEdit()
@@ -306,7 +306,7 @@ export function CashTransactionsPage() {
     await createTx.mutateAsync({
       ...basePayload,
       relatedExpenseId: relatedExpenseId ?? undefined,
-      ...(data.type === 'EXPENSE' ? { intent: data.intent } : {}),
+      ...(data.type === 'EXPENSE' && data.intent ? { intent: data.intent } : {}),
     })
     reset({
       cashAccountId: data.cashAccountId,
@@ -315,7 +315,7 @@ export function CashTransactionsPage() {
       subcategoryId: data.subcategoryId,
       isReimbursement: false,
       relatedExpenseId: '',
-      intent: data.type === 'EXPENSE' ? data.intent : DEFAULT_EXPENSE_INTENT,
+      intent: data.type === 'EXPENSE' ? data.intent : '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -364,8 +364,8 @@ export function CashTransactionsPage() {
                   setValue('isReimbursement', false, { shouldDirty: true })
                   setValue('relatedExpenseId', '', { shouldDirty: true })
                 }
-                if (type === 'EXPENSE') {
-                  setValue('intent', DEFAULT_EXPENSE_INTENT, { shouldDirty: true })
+                if (type !== 'EXPENSE') {
+                  setValue('intent', '', { shouldDirty: true })
                 }
               }}
             />

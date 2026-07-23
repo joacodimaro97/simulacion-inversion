@@ -1,10 +1,10 @@
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
-import { INTENT_LABELS, INTENT_STYLES, resolveDisplayIntent } from '@/utils/cashIntent'
+import { getIntentLabel, getIntentStyles, resolveDisplayIntent } from '@/utils/cashIntent'
 import type { CashTransaction, CashTransactionIntent } from '@/types/cash'
 
 interface IntentBadgeProps {
-  intent?: CashTransactionIntent | null
+  intent?: CashTransactionIntent | string | null
   transaction?: Pick<
     CashTransaction,
     'type' | 'intent' | 'transferId' | 'fundingId' | 'creditInstallmentId'
@@ -18,8 +18,8 @@ export function IntentBadge({ intent, transaction, className }: IntentBadgeProps
   if (!resolved) return null
 
   return (
-    <Badge className={cn(INTENT_STYLES[resolved].badge, className)}>
-      {INTENT_LABELS[resolved]}
+    <Badge className={cn(getIntentStyles(resolved).badge, className)}>
+      {getIntentLabel(resolved)}
     </Badge>
   )
 }

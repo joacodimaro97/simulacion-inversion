@@ -14,6 +14,7 @@ import { MovementsPage } from '@/pages/MovementsPage'
 import { SimulatorPage } from '@/pages/SimulatorPage'
 import { ComparatorPage } from '@/pages/ComparatorPage'
 import { CashDashboardPage } from '@/pages/cash/CashDashboardPage'
+import { CashReportsPage } from '@/pages/cash/CashReportsPage'
 import { CashAccountsPage } from '@/pages/cash/CashAccountsPage'
 import { CashCategoriesPage } from '@/pages/cash/CashCategoriesPage'
 import { CashTransactionsPage } from '@/pages/cash/CashTransactionsPage'
@@ -60,6 +61,7 @@ function AppRoutes() {
             <Route path={ROUTES.SIMULATOR} element={<SimulatorPage />} />
             <Route path={ROUTES.COMPARATOR} element={<ComparatorPage />} />
             <Route path={ROUTES.CASH} element={<CashDashboardPage />} />
+            <Route path={ROUTES.CASH_REPORTS} element={<CashReportsPage />} />
             <Route path={ROUTES.CASH_ACCOUNTS} element={<CashAccountsPage />} />
             <Route path={ROUTES.CASH_CATEGORIES} element={<CashCategoriesPage />} />
             <Route path={ROUTES.CASH_TRANSACTIONS} element={<CashTransactionsPage />} />

@@ -2,10 +2,9 @@ export type CashTransactionType = 'INCOME' | 'EXPENSE'
 
 export type CashTransactionIntent =
   | 'NECESIDAD'
-  | 'CUIDADO'
+  | 'CONVENIENCIA'
   | 'GUSTO'
   | 'IMPULSO'
-  | 'REVISAR'
 
 export interface CashAccount {
   id: string
@@ -96,7 +95,7 @@ export interface CreateCashTransactionInput {
   date: string
   description?: string
   relatedExpenseId?: string
-  /** Solo para EXPENSE. Si se omite, el backend usa REVISAR. */
+  /** Solo para EXPENSE. Opcional. */
   intent?: CashTransactionIntent
 }
 
@@ -176,7 +175,12 @@ export interface CashTransfer {
   userId: string
   fromCashAccountId: string
   toCashAccountId: string
+  /** Monto que sale de la cuenta origen (en su moneda). */
   amount: number
+  /** Monto que entra en la cuenta destino (en su moneda). */
+  toAmount: number
+  /** Unidades de moneda destino por 1 de origen. null si misma moneda. */
+  exchangeRate: number | null
   date: string
   description: string | null
   createdAt: string
@@ -192,6 +196,10 @@ export interface CreateCashTransferInput {
   amount: number
   date: string
   description?: string
+  /** Solo multi-moneda. No enviar junto con toAmount. */
+  exchangeRate?: number
+  /** Solo multi-moneda. No enviar junto con exchangeRate. */
+  toAmount?: number
 }
 
 export interface CashTransferQuery {
@@ -276,6 +284,34 @@ export interface CashSummary {
   balance: number
   byCategory: CashSummaryByCategory[]
   byParentCategory: CashSummaryByParentCategory[]
+}
+
+/** Filtros de período: year+month, solo year, o startDate+endDate (no mezclar modos). */
+export interface CashIntentSummaryQuery {
+  cashAccountId?: string
+  year?: number
+  month?: number
+  startDate?: string
+  endDate?: string
+}
+
+export interface CashIntentSummaryItem {
+  intent: CashTransactionIntent | null
+  /** Neto (descuenta reintegros). */
+  total: number
+  totalGross: number
+  count: number
+  /** Sobre totalExpenseNet. */
+  percentage: number
+}
+
+export interface CashIntentSummary {
+  startDate: string
+  endDate: string
+  totalExpense: number
+  totalExpenseNet: number
+  totalReimbursed: number
+  byIntent: CashIntentSummaryItem[]
 }
 
 export type BudgetStatus =

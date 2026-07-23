@@ -8,8 +8,8 @@ import {
 import type { CashTransactionIntent } from '@/types/cash'
 
 interface IntentSelectorProps {
-  value: CashTransactionIntent
-  onChange: (intent: CashTransactionIntent) => void
+  value: CashTransactionIntent | ''
+  onChange: (intent: CashTransactionIntent | '') => void
   className?: string
 }
 
@@ -29,7 +29,7 @@ export function IntentSelector({ value, onChange, className }: IntentSelectorPro
             <button
               key={intent}
               type="button"
-              onClick={() => onChange(intent)}
+              onClick={() => onChange(active ? '' : intent)}
               className={cn(
                 'inline-flex min-h-9 cursor-pointer items-center rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors',
                 active ? styles.chipActive : styles.chip,

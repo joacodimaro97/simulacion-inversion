@@ -18,7 +18,6 @@ import {
   isCategorySelectionValid,
   resolveTransactionCategoryId,
 } from '@/utils/cashCategories'
-import { DEFAULT_EXPENSE_INTENT } from '@/utils/cashIntent'
 import { todayISO } from '@/utils/format'
 import type { CashTransactionIntent, CashTransactionType } from '@/types/cash'
 
@@ -36,7 +35,7 @@ interface QuickForm {
   subcategoryId: string
   isReimbursement: boolean
   relatedExpenseId: string
-  intent: CashTransactionIntent
+  intent: CashTransactionIntent | ''
   amount: string
   date: string
   description: string
@@ -66,7 +65,7 @@ export function QuickTransactionModal({
       subcategoryId: '',
       isReimbursement: false,
       relatedExpenseId: '',
-      intent: DEFAULT_EXPENSE_INTENT,
+      intent: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -123,7 +122,7 @@ export function QuickTransactionModal({
       subcategoryId: firstSubcategoryId,
       isReimbursement: false,
       relatedExpenseId: '',
-      intent: DEFAULT_EXPENSE_INTENT,
+      intent: '',
       amount: '',
       date: todayISO(),
       description: '',
@@ -146,8 +145,8 @@ export function QuickTransactionModal({
       setValue('isReimbursement', false, { shouldDirty: true })
       setValue('relatedExpenseId', '', { shouldDirty: true })
     }
-    if (type === 'EXPENSE') {
-      setValue('intent', DEFAULT_EXPENSE_INTENT, { shouldDirty: true })
+    if (type !== 'EXPENSE') {
+      setValue('intent', '', { shouldDirty: true })
     }
   }
 
@@ -166,7 +165,7 @@ export function QuickTransactionModal({
         data.type === 'INCOME' && data.isReimbursement && data.relatedExpenseId
           ? data.relatedExpenseId
           : undefined,
-      ...(data.type === 'EXPENSE' ? { intent: data.intent } : {}),
+      ...(data.type === 'EXPENSE' && data.intent ? { intent: data.intent } : {}),
     })
     onClose()
   }

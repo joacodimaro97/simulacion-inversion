@@ -9,6 +9,7 @@ export const ROUTES = {
   SIMULATOR: '/simulador',
   COMPARATOR: '/comparador',
   CASH: '/cash',
+  CASH_REPORTS: '/cash/reports',
   CASH_ACCOUNTS: '/cash/accounts',
   CASH_CATEGORIES: '/cash/categories',
   CASH_TRANSACTIONS: '/cash/transactions',
@@ -55,6 +56,8 @@ export const queryKeys = {
     categoryTree: (type?: string) => ['cash', 'categories', 'tree', type] as const,
     transactions: (filters?: unknown) => ['cash', 'transactions', filters] as const,
     summary: (filters?: unknown) => ['cash', 'summary', filters] as const,
+    summaryIntents: (filters?: unknown) =>
+      ['cash', 'summary', 'intents', filters] as const,
     transfers: (filters?: unknown) => ['cash', 'transfers', filters] as const,
     budgets: ['cash', 'budgets'] as const,
     budget: (id: string) => ['cash', 'budgets', id] as const,
